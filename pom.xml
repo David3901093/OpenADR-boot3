@@ -1,0 +1,199 @@
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.avob.openadr</groupId>
+	<artifactId>OpenADR-boot3</artifactId>
+	<version>0.1.0-SNAPSHOT</version>
+	<name>OpenADR</name>
+	<description>OpenADR VEN/VTN implementation</description>
+	<packaging>pom</packaging>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.2.10</version>
+		<relativePath></relativePath>
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>21</java.version>
+		<project.version>0.1.0-SNAPSHOT</project.version>
+		<amq.version>5.18.3</amq.version>
+		<smack.version>4.3.4</smack.version>
+		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
+		<jacoco-plugin.version>0.8.10</jacoco-plugin.version>
+		<postgres.version>42.7.3</postgres.version>
+		<rabbitmq-jms.version>2.6.0</rabbitmq-jms.version>
+		<springfox.version>2.2.0</springfox.version>
+		<dozer.version>5.5.1</dozer.version>
+		<commons-compress.version>1.19</commons-compress.version>
+		<guava.version>21.0	</guava.version>
+		<mokito.version>1.9.5</mokito.version>
+		<common-logging.version>1.2</common-logging.version>
+
+	</properties>
+
+
+
+	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRModel20b</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.plugin</groupId>
+				<artifactId>spring-plugin-core</artifactId>
+				<version>2.0.0.RELEASE</version>
+			</dependency>
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRHTTPClient</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRSecurity</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+
+
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRHTTPClient20b</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRXMPPClient</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRServerVTNCommon</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.avob.openadr</groupId>
+				<artifactId>OpenADRServerVEN20b</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+
+
+			<dependency>
+				<groupId>org.postgresql</groupId>
+				<artifactId>postgresql</artifactId>
+				<version>${postgres.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.rabbitmq.jms</groupId>
+				<artifactId>rabbitmq-jms</artifactId>
+				<version>${rabbitmq-jms.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.springdoc</groupId>
+				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+				<version>2.2.0</version>
+			</dependency>
+			<dependency>
+				<groupId>net.sf.dozer</groupId>
+				<artifactId>dozer</artifactId>
+				<version>${dozer.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-compress</artifactId>
+				<version>${commons-compress.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>${guava.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-all</artifactId>
+				<version>${mokito.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-logging</groupId>
+				<artifactId>commons-logging</artifactId>
+				<version>${common-logging.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy-external-dependency</id>
+						<phase>none</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<artifactItems>
+						<artifactItem>
+							<groupId>org.postgresql</groupId>
+							<artifactId>postgresql</artifactId>
+							<version>${postgres.version}</version>
+							<type>jar</type>
+							<outputDirectory>${project.build.directory}/</outputDirectory>
+						</artifactItem>
+					</artifactItems>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<modules>
+		<module>./OpenADRHTTPClient</module>
+		<module>./OpenADRHTTPClient20b</module>
+		<module>./OpenADRXMPPClient</module>
+		<module>./OpenADRModel20b</module>
+		<module>./OpenADRSecurity</module>
+		<module>./OpenADRServerVTNCommon</module>
+		<module>./OpenADRServerVEN20b</module>
+		<module>./OpenADRServerVTN20b</module>
+		<module>./DummyVEN20b</module>
+		<module>./DummyDRProgram</module>
+
+	</modules>
+
+
+
+
+</project>

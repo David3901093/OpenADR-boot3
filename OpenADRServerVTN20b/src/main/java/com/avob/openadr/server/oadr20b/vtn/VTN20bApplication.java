@@ -1,0 +1,97 @@
+package com.avob.openadr.server.oadr20b.vtn;
+
+import java.io.IOException;
+
+import jakarta.annotation.Resource;
+import jakarta.xml.bind.JAXBException;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jms.artemis.ArtemisAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.web.embedded.jetty.JettyServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Profile;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jms.annotation.EnableJms;
+import org.xml.sax.SAXException;
+
+import com.avob.openadr.model.oadr20b.Oadr20bJAXBContext;
+import com.avob.openadr.model.oadr20b.Oadr20bSecurity;
+import com.avob.openadr.security.exception.OadrSecurityException;
+import com.avob.openadr.server.common.vtn.VTNEmbeddedServletContainerCustomizer;
+import com.avob.openadr.server.common.vtn.VtnConfig;
+
+/**
+ * VTN (Virtual Top Node) application entry point for OADR 2.0b protocol.
+ * Adapted for Spring Boot 3.2 (Jakarta EE 10+ compatibility).
+ */
+@SpringBootApplication(exclude = {
+		SecurityAutoConfiguration.class,
+		ArtemisAutoConfiguration.class,
+
+})
+@EnableJms
+@ComponentScan(basePackages = {
+		"com.avob.openadr.server.common.vtn",
+		"com.avob.openadr.server.oadr20b.vtn"
+})
+@EnableJpaRepositories({
+		"com.avob.openadr.server.common.vtn",
+		"com.avob.openadr.server.oadr20b.vtn"
+})
+@EntityScan({
+		"com.avob.openadr.server.common.vtn",
+		"com.avob.openadr.server.oadr20b.vtn"
+})
+public class VTN20bApplication {
+
+	@Resource
+	private VtnConfig vtnConfig;
+
+	/**
+	 * Customizes Jetty web server configuration (port, SSL, context path, etc.).
+	 */
+	@Bean
+	public WebServerFactoryCustomizer<JettyServletWebServerFactory> servletContainerCustomizer() {
+		return new VTNEmbeddedServletContainerCustomizer(
+				vtnConfig.getPort(),
+				vtnConfig.getContextPath(),
+				vtnConfig.getSslContext(),
+				Oadr20bSecurity.getProtocols(),
+				Oadr20bSecurity.getCiphers()
+		);
+	}
+
+	/**
+	 * JAXB context for OADR 2.0b payload processing (production profile).
+	 * Enables XSD validation if configured.
+	 */
+	@Bean
+	@Profile("!test")
+	public Oadr20bJAXBContext jaxbContextProd() throws OadrSecurityException, JAXBException {
+		if (vtnConfig.getValidateOadrPayloadAgainstXsd()
+				&& vtnConfig.getValidateOadrPayloadAgainstXsdFilePath() != null) {
+			return Oadr20bJAXBContext.getInstance(vtnConfig.getValidateOadrPayloadAgainstXsdFilePath());
+		}
+		return Oadr20bJAXBContext.getInstance();
+	}
+
+	/**
+	 * JAXB context for OADR 2.0b payload processing (test profile).
+	 * Disables XSD validation for testing efficiency.
+	 */
+	@Bean
+	@Profile("test")
+	public Oadr20bJAXBContext jaxbContextTest() throws JAXBException, SAXException {
+		return Oadr20bJAXBContext.getInstance();
+	}
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(VTN20bApplication.class, args);
+	}
+}

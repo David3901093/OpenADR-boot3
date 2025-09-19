@@ -1,0 +1,73 @@
+*/.metadata
+*/bin/
+*/tmp/
+*/*.tmp
+*/*.bak
+*/*.swp
+*/*~.nib
+*/local.properties
+*/.settings/
+*/.loadpath
+*/.recommenders
+.project
+.settings/
+
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+*/*.launch
+
+# PyDev specific (Python IDE for Eclipse)
+*/*.pydevproject
+
+# CDT-specific (C/C++ Development Tooling)
+*/.cproject
+
+# CDT- autotools
+*/.autotools
+
+# Java annotation processor (APT)
+*/.factorypath
+
+# PDT-specific (PHP Development Tools)
+*/.buildpath
+
+# sbteclipse plugin
+*/.target
+
+# Tern plugin
+*/.tern-project
+
+# TeXlipse plugin
+*/.texlipse
+
+# STS (Spring Tool Suite)
+*/.springBeans
+*/.classpath
+*/.project
+
+# Code Recommenders
+*/.recommenders/
+
+# Annotation Processing
+*/.apt_generated/
+
+# compile foolder
+*/target
+
+.vagrant/**/.vagrant
+.vagrant/vtn20b_postgres/provisioning/playbook.retry
+.vagrant/vtn20b_postgres/provisioning/roles/*
+
+*/package-lock.json
+
+.vagrant/nodered/node-red-contrib-oadr-ven/
+.vagrant/nodered/provisioning/playbook.retry
+.vagrant/nodered/provisioning/roles/*
+
+cert*
+OpenADRServerVTN20b/src/main/resources/public/
+OpenADRServerVTN20b/frontend/build/
+OpenADRServerVTN20b/frontend/node_modules/
+OpenADRServerVTN20b/frontend/package-lock.json
