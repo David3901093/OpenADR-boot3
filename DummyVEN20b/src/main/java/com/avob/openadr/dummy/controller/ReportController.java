@@ -79,7 +79,7 @@ public class ReportController {
     public String metaData(@RequestBody VTNConfig vtnConfig) {
         try {
            loadConfig(vtnConfig);
-            sendMetaData(true);
+            sendMetaData();
             return ResponseUtils.getResString();
         }catch (Exception e){
             return "error response:"+ e.getMessage();
@@ -87,7 +87,7 @@ public class ReportController {
 
     }
 
-    private void sendMetaData(boolean piggy) throws JAXBException, Oadr20bUnmarshalException, Oadr20bException, Oadr20bHttpLayerException, Oadr20bXMLSignatureException, Oadr20bXMLSignatureValidationException, XmppStringprepException, SmackException.NotConnectedException, Oadr20bMarshalException, InterruptedException {
+    private void sendMetaData() throws JAXBException, Oadr20bUnmarshalException, Oadr20bException, Oadr20bHttpLayerException, Oadr20bXMLSignatureException, Oadr20bXMLSignatureValidationException, XmppStringprepException, SmackException.NotConnectedException, Oadr20bMarshalException, InterruptedException {
         OadrCreateReportType reportMetadata = oadr20bVENEiReportService.createReportMetadata(vtnSessionConfiguration);
         Oadr20bUpdateReportBuilder updateReportBuilder =
                 Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(UUID.randomUUID().toString() , vtnSessionConfiguration.getVenId());
