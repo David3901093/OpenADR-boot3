@@ -13,17 +13,19 @@ public class Oadr20bCreateOptBuilder {
     private OadrCreateOptType oadrCreateOptType;
 
     public Oadr20bCreateOptBuilder(String requestId, String venId, Long createdDatetime, String eventId,
-            long modificationNumber, String optId, OptTypeType optType, OptReasonEnumeratedType optReason) {
+                                   long modificationNumber, String optId, OptTypeType optType, OptReasonEnumeratedType optReason, String marketContext) {
         oadrCreateOptType = Oadr20bFactory.createOadrCreateOptType(requestId, venId, createdDatetime, eventId,
                 modificationNumber, optId, optType, optReason);
         oadrCreateOptType.setEiTarget(Oadr20bEiBuilders.newOadr20bEiTargetTypeBuilder().addVenId(venId).build());
+        oadrCreateOptType.setMarketContext(marketContext);
     }
 
     public Oadr20bCreateOptBuilder(String requestId, String venId, Long createdDatetime,
-            VavailabilityType vavailabilityType, String optId, OptTypeType optType, OptReasonEnumeratedType optReason) {
+            VavailabilityType vavailabilityType, String optId, OptTypeType optType, OptReasonEnumeratedType optReason,String marketContext) {
         oadrCreateOptType = Oadr20bFactory.createOadrCreateOptType(requestId, venId, createdDatetime, vavailabilityType,
                 optId, optType, optReason);
         oadrCreateOptType.setEiTarget(Oadr20bEiBuilders.newOadr20bEiTargetTypeBuilder().addVenId(venId).build());
+        oadrCreateOptType.setMarketContext(marketContext);
     }
 
     public Oadr20bCreateOptBuilder withSchemaVersion(String schemaVersion) {

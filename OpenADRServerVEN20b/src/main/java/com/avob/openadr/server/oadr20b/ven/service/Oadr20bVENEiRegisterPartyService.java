@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.avob.openadr.model.oadr20b.Oadr20bFactory;
 import com.avob.openadr.model.oadr20b.builders.Oadr20bEiReportBuilders;
+import com.avob.openadr.model.oadr20b.builders.eiregisterparty.Oadr20bCancelPartyRegistrationBuilder;
 import  jakarta.annotation.Resource;
 
 import org.eclipse.jetty.http.HttpStatus;
@@ -42,7 +43,6 @@ import com.avob.openadr.security.exception.OadrSecurityException;
 import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
 
-import static com.fasterxml.jackson.databind.jsonFormatVisitors.JsonValueFormat.UUID;
 
 @Service
 public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
@@ -57,12 +57,13 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 	@Resource
 	@Lazy
 	private Oadr20bPollService oadrPollService;
-	@Resource
-	private Oadr20bVENEiReportService oadr20bVENEiReportService;
 
 	private Map<String, OadrCreatedPartyRegistrationType> registration = new ConcurrentHashMap<String, OadrCreatedPartyRegistrationType>();
 
 	private List<Oadr20bVENEiRegisterPartyServiceListener> listeners;
+
+
+
 
 
 
@@ -83,7 +84,30 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 		reinitRegistration(vtnConfiguration);
 		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(requestId, responseCode, venID).build();
 	}
+	public void cancelRegistration(VtnSessionConfiguration vtnConfiguration) {
 
+		String requestId = java.util.UUID.randomUUID().toString();
+
+		try {
+			OadrCancelPartyRegistrationType oadrCancelPartyRegistrationType =  new Oadr20bCancelPartyRegistrationBuilder(requestId, vtnConfiguration.getVenRegistrationId(), vtnConfiguration.getVenId()).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value()).build();
+			if (vtnConfiguration.getVtnUrl() != null) {
+				multiVtnConfig.getMultiHttpClientConfig(vtnConfiguration)
+						.oadrCancelPartyRegistration(oadrCancelPartyRegistrationType);
+
+			} else {
+				multiVtnConfig.getMultiXmppClientConfig(vtnConfiguration)
+						.oadrCancelPartyRegistration(oadrCancelPartyRegistrationType);
+			}
+			vtnConfiguration.setVenRegistrationId(null);
+		} catch (Oadr20bException | Oadr20bHttpLayerException | Oadr20bXMLSignatureException |
+				 Oadr20bXMLSignatureValidationException | Oadr20bMarshalException | IOException |
+				 NotConnectedException e) {
+			LOGGER.error("Fail to create party registration", e);
+		} catch (InterruptedException e) {
+			LOGGER.error("Fail to create party registration", e);
+			Thread.currentThread().interrupt();
+		}
+	}
 	public OadrCanceledPartyRegistrationType oadrCancelPartyRegistration(VtnSessionConfiguration vtnConfiguration,
 			OadrCancelPartyRegistrationType oadrCancelPartyRegistrationType) {
 
@@ -140,6 +164,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 
 				multiVtnConfig.getMultiXmppClientConfig(vtnConfiguration)
 						.oadrCreatePartyRegistration(createPartyRegistration);
+
 			}
 
 		} catch (Oadr20bException | Oadr20bHttpLayerException | Oadr20bXMLSignatureException
@@ -153,7 +178,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 
 	}
 	public void postRegistration(VtnSessionConfiguration vtnConfiguration) {
-		String requestId = "CrtPartRegReq082925_182205_387";
+		String requestId = java.util.UUID.randomUUID().toString();
 
 		try {
 			OadrCreatePartyRegistrationType createPartyRegistration = Oadr20bEiRegisterPartyBuilders
@@ -164,7 +189,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 					.withOadrTransportAddress(vtnConfiguration.getVenUrl())
 					.withOadrReportOnly(vtnConfiguration.getReportOnly())
 					.withOadrVenName(vtnConfiguration.getVenName())
-					.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
+					.withOadrXmlSignature(vtnConfiguration.getXmlSignature()).withRegistrationId(vtnConfiguration.getVenRegistrationId())
 					.withOadrHttpPullModel(vtnConfiguration.getPullModel())
 					.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
 					.build();
@@ -173,9 +198,11 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 						.oadrCreatePartyRegistration(createPartyRegistration);
 				this.oadrCreatedPartyRegistration(vtnConfiguration, oadrCreatedPartyRegistrationType);
 
+
 			} else {
 				multiVtnConfig.getMultiXmppClientConfig(vtnConfiguration)
 						.oadrCreatePartyRegistration(createPartyRegistration);
+
 			}
 
 		} catch (Oadr20bException | Oadr20bHttpLayerException | Oadr20bXMLSignatureException |

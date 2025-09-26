@@ -1,20 +1,18 @@
 package com.avob.openadr.server.oadr20b.ven.service;
 
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import  jakarta.annotation.Resource;
+import jakarta.annotation.Resource;
 
-import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,7 +32,6 @@ import com.avob.openadr.model.oadr20b.oadr.OadrReportDescriptionType;
 import com.avob.openadr.model.oadr20b.oadr.OadrReportRequestType;
 import com.avob.openadr.model.oadr20b.oadr.OadrReportType;
 import com.avob.openadr.model.oadr20b.oadr.OadrUpdateReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrUpdatedReportType;
 import com.avob.openadr.model.oadr20b.xcal.DurationPropType;
 import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
@@ -57,30 +54,26 @@ public class UpdateReportOrchestratorService {
 
 	public interface UpdateReportOrchestratorListener {
 		BufferValue readReportData(OadrReportType report, OadrReportDescriptionType description);
-
 	}
 
 	public void create(VtnSessionConfiguration vtnConfig, OadrCreateReportType oadrCreateReportType,
-			UpdateReportOrchestratorListener listener) {
+					   UpdateReportOrchestratorListener listener) {
 		for (OadrReportRequestType oadrReportRequestType : oadrCreateReportType.getOadrReportRequest()) {
 			String reportSpecifierID = oadrReportRequestType.getReportSpecifier().getReportSpecifierID();
 			String oadrReportRequestID = oadrReportRequestType.getReportRequestID();
 
 			if (!Oadr20bVENEiReportService.METADATA_REPORT_SPECIFIER_ID.equals(reportSpecifierID)) {
-
 				String orchestrationUUID = getOrchestrationUUID(vtnConfig, oadrReportRequestID);
 				ReportRequestOrchestration orchestration = reportRequestOrchestration.get(orchestrationUUID);
 				if (orchestration != null) {
-
 					orchestration.cancel(false);
-
 				}
 
 				orchestration = new ReportRequestOrchestration(vtnConfig, oadrReportRequestType, listener);
 				orchestration.start();
+				reportRequestOrchestration.put(orchestrationUUID, orchestration);
 			}
 		}
-
 	}
 
 	public void cancel(VtnSessionConfiguration vtnConfig, OadrCancelReportType oadrCancelReportType) {
@@ -91,289 +84,210 @@ public class UpdateReportOrchestratorService {
 				orchestration.cancel(false);
 				reportRequestOrchestration.remove(orchestrationUUID);
 			}
-
 		});
-
 	}
 
-	public class ReportRequestOrchestration {
+	public static class BufferValue {
+		private Float floatValue;
+		private OadrPayloadResourceStatusType statusValue;
 
+		private BufferValue(Float floatValue) { this.floatValue = floatValue; }
+		private BufferValue(OadrPayloadResourceStatusType statusValue) { this.statusValue = statusValue; }
+
+		public IntervalType toInterval(String intervalId, Long start, String duration, String rid, Long confidence, Float accuracy) {
+			if (floatValue != null) {
+				return Oadr20bEiBuilders.newOadr20bReportIntervalTypeBuilder(intervalId, start, duration, rid, confidence, accuracy, floatValue).build();
+			} else {
+				return Oadr20bEiBuilders.newOadr20bReportIntervalTypeBuilder(intervalId, start, duration, rid, confidence, accuracy, statusValue).build();
+			}
+		}
+
+		@Override
+		public String toString() {
+			return floatValue != null ? String.valueOf(floatValue) : "<oadrPayloadResourceStatus>";
+		}
+
+		public static BufferValue of(Float value) { return new BufferValue(value); }
+		public static BufferValue of(OadrPayloadResourceStatusType value) { return new BufferValue(value); }
+	}
+
+	private class ReportRequestOrchestration {
 		private ScheduledFuture<?> reportBackTask;
 		private Map<String, ScheduledFuture<?>> simulateReadingTask = new ConcurrentHashMap<>();
-		private Map<String, TreeMap<Long, BufferValue>> simulateReadingBuffer = new ConcurrentHashMap<>();
+		private Map<String, ConcurrentSkipListMap<Long, BufferValue>> simulateReadingBuffer = new ConcurrentHashMap<>();
+		private Map<String, Long> nextReportStart = new ConcurrentHashMap<>();
 		private OadrReportRequestType reportRequest;
 		private UpdateReportOrchestratorListener listener;
 		private VtnSessionConfiguration vtnConfig;
-		private volatile boolean cancelRequested = false;
-		private volatile boolean cancelSent = false;
 
-		private String reportRequestId;
-
-		public ReportRequestOrchestration(VtnSessionConfiguration vtnConfig,
-										  OadrReportRequestType reportRequest,
-										  UpdateReportOrchestratorListener listener) {
+		public ReportRequestOrchestration(VtnSessionConfiguration vtnConfig, OadrReportRequestType reportRequest, UpdateReportOrchestratorListener listener) {
 			this.vtnConfig = vtnConfig;
 			this.reportRequest = reportRequest;
 			this.listener = listener;
-			this.reportRequestId = "ReportReqID_" + System.currentTimeMillis();
 		}
 
 		public void start() {
-			OffsetDateTime start = OffsetDateTime.now().truncatedTo(ChronoUnit.MINUTES).plusMinutes(1);
+			OffsetDateTime start = OffsetDateTime.now().truncatedTo(ChronoUnit.MINUTES);
 
-			DurationPropType reportBackDuration = reportRequest.getReportSpecifier().getReportBackDuration();
 			DurationPropType granularity = reportRequest.getReportSpecifier().getGranularity();
-			long reportBackDurationMs = Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration());
-
-			OffsetDateTime reportBackStart = start.plus(reportBackDurationMs, ChronoUnit.MILLIS);
-			reportBackTask = scheduledExecutorService.schedule(
-					new ReportBackTask(reportBackStart, this),
-					reportBackDurationMs,
-					TimeUnit.MILLISECONDS
-			);
+			DurationPropType reportBackDuration = reportRequest.getReportSpecifier().getReportBackDuration();
+			long granularityMs = Oadr20bFactory.xmlDurationToMillisecond(granularity.getDuration());
+			long reportBackMs = Math.max(Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration()), granularityMs * 2);
 
 			reportRequest.getReportSpecifier().getSpecifierPayload().forEach(specifier -> {
 				String rid = specifier.getRID();
-				long granularityMs = Oadr20bFactory.xmlDurationToMillisecond(granularity.getDuration());
-				GranularityTask simulateRidReadingTask = new GranularityTask(start, this, specifier);
+				ConcurrentSkipListMap<Long, BufferValue> buffer = new ConcurrentSkipListMap<>();
+				simulateReadingBuffer.put(rid, buffer);
+				nextReportStart.put(rid, start.toInstant().toEpochMilli());
 
-				ScheduledFuture<?> task = simulateReadingTask.get(rid);
-				if (task == null) {
-					task = scheduledExecutorService.schedule(simulateRidReadingTask, granularityMs, TimeUnit.MILLISECONDS);
-					simulateReadingTask.put(rid, task);
+				Optional<OadrReportType> report = vtnConfig.getReport(reportRequest.getReportSpecifier().getReportSpecifierID());
+				Optional<OadrReportDescriptionType> reportDescription = vtnConfig.getReportDescription(reportRequest.getReportSpecifier().getReportSpecifierID(), rid);
+				for (int i = 0; i < 2; i++) {
+					long ts = start.toInstant().toEpochMilli() + i * granularityMs;
+					BufferValue value = (report.isPresent() && reportDescription.isPresent() && reportDescription.get().getReportSubject() != null)
+							? listener.readReportData(report.get(), reportDescription.get())
+							: BufferValue.of(0.0f);
+					buffer.put(ts, value);
 				}
+
+				scheduleNextGranularityTask(specifier, start.plus(granularityMs, ChronoUnit.MILLIS), granularityMs);
 			});
+
+			scheduleNextReportBack(reportBackMs);
 		}
 
-		public void requestCancel() {
-			this.cancelRequested = true;
-			simulateReadingTask.values().forEach(task -> task.cancel(false));
-			LOGGER.info("Cancel requested for reportRequestId={}", reportRequestId);
+		private void scheduleNextGranularityTask(SpecifierPayloadType specifier, OffsetDateTime nextStart, long granularityMs) {
+			GranularityTask task = new GranularityTask(nextStart, this, specifier, granularityMs);
+			ScheduledFuture<?> scheduled = scheduledExecutorService.schedule(task, granularityMs, TimeUnit.MILLISECONDS);
+			simulateReadingTask.put(specifier.getRID(), scheduled);
 		}
 
-		public boolean isCancelRequested() {
-			return cancelRequested;
+		private void scheduleNextReportBack(long reportBackMs) {
+			ReportBackTask reportBack = new ReportBackTask(this, reportBackMs);
+			this.reportBackTask = scheduledExecutorService.schedule(reportBack, reportBackMs, TimeUnit.MILLISECONDS);
 		}
 
 		public void cancel(boolean interrupt) {
-			this.cancelRequested = true;
-			if (reportBackTask != null) {
-				reportBackTask.cancel(interrupt);
-			}
-			simulateReadingTask.values().forEach(task -> task.cancel(interrupt));
-			simulateReadingTask.clear();
-			simulateReadingBuffer.clear();
+			if (reportBackTask != null) reportBackTask.cancel(interrupt);
+			simulateReadingTask.values().forEach(f -> f.cancel(interrupt));
 		}
 
-		private class ReportBackTask implements Runnable {
-
+		private class GranularityTask implements Runnable {
 			private OffsetDateTime start;
 			private ReportRequestOrchestration orchestration;
+			private SpecifierPayloadType specifier;
+			private long granularityMs;
 
-			public ReportBackTask(OffsetDateTime start, ReportRequestOrchestration orchestration) {
-				this.orchestration = orchestration;
+			public GranularityTask(OffsetDateTime start, ReportRequestOrchestration orchestration, SpecifierPayloadType specifier, long granularityMs) {
 				this.start = start;
+				this.orchestration = orchestration;
+				this.specifier = specifier;
+				this.granularityMs = granularityMs;
 			}
 
 			@Override
 			public void run() {
 				try {
-					String reportRequestId = orchestration.reportRequestId;
-					String reportSpecifierID = orchestration.reportRequest.getReportSpecifier().getReportSpecifierID();
-					DurationPropType granularity = orchestration.reportRequest.getReportSpecifier().getGranularity();
-					DurationPropType reportBackDuration = orchestration.reportRequest.getReportSpecifier().getReportBackDuration();
+					String rid = specifier.getRID();
+					ConcurrentSkipListMap<Long, BufferValue> buffer = orchestration.simulateReadingBuffer.get(rid);
+					Optional<OadrReportType> report = orchestration.vtnConfig.getReport(orchestration.reportRequest.getReportSpecifier().getReportSpecifierID());
+					Optional<OadrReportDescriptionType> reportDescription = orchestration.vtnConfig.getReportDescription(orchestration.reportRequest.getReportSpecifier().getReportSpecifierID(), rid);
 
-					Oadr20bUpdateReportBuilder updateReportBuilder =
-							Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(reportRequestId, orchestration.vtnConfig.getVenId());
+					BufferValue value = (report.isPresent() && reportDescription.isPresent() && reportDescription.get().getReportSubject() != null)
+							? orchestration.listener.readReportData(report.get(), reportDescription.get())
+							: BufferValue.of(0.0f);
 
-					orchestration.simulateReadingBuffer.forEach((rid, ridMap) -> {
-						Oadr20bUpdateReportOadrReportBuilder reportBuilder =
-								Oadr20bEiReportBuilders.newOadr20bUpdateReportOadrReportBuilder(
-										reportRequestId, reportSpecifierID, reportRequestId,
-										ReportNameEnumeratedType.TELEMETRY_USAGE,
-										System.currentTimeMillis(),
-										ridMap.entrySet().stream().findFirst().map(Entry::getKey).orElse(System.currentTimeMillis()),
-										granularity.getDuration()
-								);
+					buffer.put(start.toInstant().toEpochMilli(), value);
+					orchestration.simulateReadingBuffer.put(rid, buffer);
 
-						int i = 0;
-						for (Entry<Long, BufferValue> entry : ridMap.entrySet()) {
-							reportBuilder.addInterval(entry.getValue().toInterval(
-									String.valueOf(i++),
-									entry.getKey(),
-									granularity.getDuration(),
-									rid,
-									1L,
-									1F
-							));
-						}
-						updateReportBuilder.addReport(reportBuilder.build());
-					});
-
-					orchestration.simulateReadingBuffer.clear();
-					OadrUpdateReportType updateReport = updateReportBuilder.build();
-
-					OadrCancelReportType cancelReport = null;
-					if (orchestration.isCancelRequested() && !orchestration.cancelSent) {
-						cancelReport = Oadr20bEiReportBuilders
-								.newOadr20bCancelReportBuilder(updateReport.getRequestID(),
-										orchestration.vtnConfig.getVenId(), false)
-								.addReportRequestId(reportRequestId)
-								.build();
-						orchestration.cancelSent = true;
-						LOGGER.info("Piggyback cancel included for reportRequestId={}", reportRequestId);
-					}
-					if (cancelReport != null) {
-						cancelReport.setRequestID(updateReport.getRequestID());
-					}
-
-					OadrUpdatedReportType updatedReport = Oadr20bEiReportBuilders
-							.newOadr20bUpdatedReportBuilder(updateReport.getRequestID(), HttpStatus.OK_200, orchestration.vtnConfig.getVenId())
-							.withOadrCancelReport(cancelReport)
-							.build();
-
-					oadr20bVENEiReportService.oadrUpdatedReport(orchestration.vtnConfig, updatedReport);
-
-					long delay = Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration());
-					OffsetDateTime nextStart = start.plus(java.time.Duration.ofMillis(delay));
-					orchestration.reportBackTask = scheduledExecutorService.schedule(
-							new ReportBackTask(nextStart, orchestration),
-							delay,
-							TimeUnit.MILLISECONDS
-					);
+					OffsetDateTime next = start.plus(granularityMs, ChronoUnit.MILLIS);
+					scheduleNextGranularityTask(specifier, next, granularityMs);
 
 				} catch (Exception e) {
-					LOGGER.error("Error during report back task execution", e);
+					LOGGER.error("Error in GranularityTask", e);
 				}
 			}
 		}
-	}
 
+		private class ReportBackTask implements Runnable {
+			private ReportRequestOrchestration orchestration;
+			private long reportBackMs;
 
-
-
-	private class GranularityTask implements Runnable {
-
-		private OffsetDateTime start;
-		private ReportRequestOrchestration orchestration;
-		private SpecifierPayloadType specifier;
-
-		public GranularityTask(OffsetDateTime start, ReportRequestOrchestration orchestration,
-				SpecifierPayloadType specifier) {
-			this.start = start;
-			this.orchestration = orchestration;
-			this.specifier = specifier;
-		}
-
-		@Override
-		public void run() {
-
-			VtnSessionConfiguration multiConfig = orchestration.vtnConfig;
-
-			String reportRequestId = orchestration.reportRequest.getReportRequestID();
-			String reportSpecifierId = orchestration.reportRequest.getReportSpecifier().getReportSpecifierID();
-			String rid = specifier.getRID();
-			DurationPropType granularity = orchestration.reportRequest.getReportSpecifier().getGranularity();
-
-			ScheduledFuture<?> scheduledFuture = orchestration.simulateReadingTask.get(rid);
-
-			if (scheduledFuture.isCancelled()) {
-				LOGGER.info(String.format("Cancel reading: %s %s %s %s", multiConfig.getVenName(), reportRequestId,
-						reportSpecifierId, rid));
-				return;
+			public ReportBackTask(ReportRequestOrchestration orchestration, long reportBackMs) {
+				this.orchestration = orchestration;
+				this.reportBackMs = reportBackMs;
 			}
 
-			TreeMap<Long, BufferValue> ridMap = orchestration.simulateReadingBuffer.get(rid);
-			if (ridMap == null) {
-				ridMap = new TreeMap<>();
-			}
+			@Override
+			public void run() {
+				try {
+					orchestration.simulateReadingBuffer.forEach((rid, buffer) -> {
+						long startMs = orchestration.nextReportStart.getOrDefault(rid, buffer.firstKey());
+						long endMs = startMs + reportBackMs;
 
-			Optional<OadrReportType> report = orchestration.vtnConfig.getReport(reportSpecifierId);
+						Oadr20bUpdateReportBuilder updateBuilder = Oadr20bEiReportBuilders
+								.newOadr20bUpdateReportBuilder("0", orchestration.vtnConfig.getVenId());
 
-			Optional<OadrReportDescriptionType> reportDescription = orchestration.vtnConfig
-					.getReportDescription(reportSpecifierId, rid);
+						ReportNameEnumeratedType reportName = ReportNameEnumeratedType.TELEMETRY_USAGE;
+						Optional<OadrReportType> reportOpt = orchestration.vtnConfig.getReport(
+								orchestration.reportRequest.getReportSpecifier().getReportSpecifierID()
+						);
+						if (reportOpt.isPresent() && reportOpt.get().getReportName() != null) {
+							try {
+								String name = reportOpt.get().getReportName();
+								if (name.startsWith("METADATA_")) {
+									name = name.substring("METADATA_".length());
+								}
+								reportName = ReportNameEnumeratedType.fromValue(name);
+							} catch (IllegalArgumentException ex) {
+								LOGGER.warn("Unknown report name {}, fallback to TELEMETRY_USAGE", reportOpt.get().getReportName());
+							}
+						}
 
-			if (report.isPresent() && reportDescription.isPresent()) {
 
-				BufferValue value = orchestration.listener.readReportData(report.get(), reportDescription.get());
+						Oadr20bUpdateReportOadrReportBuilder reportBuilder =
+								Oadr20bEiReportBuilders.newOadr20bUpdateReportOadrReportBuilder(
+										"0",
+										orchestration.reportRequest.getReportSpecifier().getReportSpecifierID(),
+										orchestration.reportRequest.getReportRequestID(),
+										reportName,
+										System.currentTimeMillis(),
+										startMs,
+										Oadr20bFactory.millisecondToXmlDuration(reportBackMs)
+								);
 
-				ridMap.put(start.toInstant().toEpochMilli(), value);
+						int intervalId = 0;
+						for (Entry<Long, BufferValue> entry : buffer.subMap(startMs, endMs).entrySet()) {
+							reportBuilder.addInterval(
+									entry.getValue().toInterval(
+											String.valueOf(intervalId++),
+											entry.getKey(),
+											orchestration.reportRequest.getReportSpecifier().getGranularity().getDuration(),
+											rid,
+											1L,
+											1.0f
+									)
+							);
+						}
 
-				orchestration.simulateReadingBuffer.put(rid, ridMap);
+						orchestration.nextReportStart.put(rid, endMs);
+						updateBuilder.addReport(reportBuilder.build());
 
-				Long granularityToMillisecond = Oadr20bFactory.xmlDurationToMillisecond(granularity.getDuration());
-				OffsetDateTime plus = start.plus(java.time.Duration.ofMillis(granularityToMillisecond));
+						OadrUpdateReportType updateReport = updateBuilder.build();
+						oadr20bVENEiReportService.updateReport(orchestration.vtnConfig, updateReport);
+					});
 
-				GranularityTask simulateRidReadingTask = new GranularityTask(plus, orchestration, specifier);
-				ScheduledFuture<?> schedule = scheduledExecutorService.schedule(simulateRidReadingTask,
-						granularityToMillisecond, TimeUnit.MILLISECONDS);
+					scheduleNextReportBack(reportBackMs);
 
-				orchestration.simulateReadingTask.put(rid, schedule);
-
-				LOGGER.info(String.format("Reading: %s %s %s", reportSpecifierId, rid, value.toString()));
-
-			} else {
-				LOGGER.warn(String.format("Unknown report reportSpecifierID: %s rID: %s", reportSpecifierId, rid));
-			}
-
-		}
-
-	}
-
-	static public class BufferValue {
-
-		private Float floatValue;
-		private OadrPayloadResourceStatusType statusValue;
-
-		private BufferValue(Float floatValue) {
-			this.floatValue = floatValue;
-		}
-
-		private BufferValue(OadrPayloadResourceStatusType statusValue) {
-			this.statusValue = statusValue;
-		}
-
-		public IntervalType toInterval(String intervalId, Long start, String duration, String rid, Long confidence,
-				Float accuracy) {
-			if (floatValue != null) {
-				return Oadr20bEiBuilders.newOadr20bReportIntervalTypeBuilder(intervalId, start, duration, rid,
-						confidence, accuracy, floatValue).build();
-			} else {
-				return Oadr20bEiBuilders.newOadr20bReportIntervalTypeBuilder(intervalId, start, duration, rid,
-						confidence, accuracy, statusValue).build();
+				} catch (Exception e) {
+					LOGGER.error("Error in ReportBackTask", e);
+				}
 			}
 
 		}
-
-		public String toString() {
-			if (floatValue != null) {
-				return String.valueOf(floatValue);
-			} else {
-				return "<oadrPayloadResourceStatus>";
-			}
-		}
-
-		public static BufferValue of(Float value) {
-			return new BufferValue(value);
-		}
-		
-		public static BufferValue of(OadrPayloadResourceStatusType value) {
-			return new BufferValue(value);
-		}
-
-	}
-
-
-
-	public void addReportRequestOrchestration(VtnSessionConfiguration vtnConfig, OadrReportRequestType reportRequest,
-			UpdateReportOrchestratorListener listener) {
-
 	}
 
 	public String getOrchestrationUUID(VtnSessionConfiguration vtnConfig, String reportRequestId) {
-
 		return new StringBuilder().append(vtnConfig.getSessionKey()).append(reportRequestId).toString();
-
 	}
-
 }

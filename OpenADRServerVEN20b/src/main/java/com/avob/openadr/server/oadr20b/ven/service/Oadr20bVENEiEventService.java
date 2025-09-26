@@ -146,12 +146,11 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		}
 	});
 
-	private Optional<EventResponse> processOadrEvent(VtnSessionConfiguration vtnConfiguration, String requestId,
+	private Optional<EventResponse> processOadrEvent(VtnSessionConfiguration vtnConfiguration, String requestId,int responseCode,
 			OadrEvent event) throws Oadr20bDistributeEventApplicationLayerException {
 
 		ResponseRequiredType oadrResponseRequired = event.getOadrResponseRequired();
 		boolean doNeedResponse = ResponseRequiredType.ALWAYS.equals(oadrResponseRequired);
-		int responseCode = HttpStatus.OK_200;
 		if (!ResponseRequiredType.NEVER.equals(oadrResponseRequired) && doNeedResponse) {
 			String eventID = event.getEiEvent().getEventDescriptor().getEventID();
 			long modificationNumber = event.getEiEvent().getEventDescriptor().getModificationNumber();
@@ -163,14 +162,15 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 	}
 
 	public OadrResponseType oadrDistributeEvent(VtnSessionConfiguration vtnConfiguration, OadrDistributeEventType event) {
-
 		String vtnRequestID = event.getRequestID();
 		int responseCode = HttpStatus.OK_200;
 		boolean hasError = false;
-		if (!(vtnConfiguration.getVtnId().equals(event.getVtnID()))){
-			responseCode=Oadr20bApplicationLayerErrorCode.INVALID_ID_452;
+
+		if (!(vtnConfiguration.getVtnId().equals(event.getVtnID()))) {
+			responseCode = Oadr20bApplicationLayerErrorCode.INVALID_ID_452;
 			return getErrorResponseType(vtnConfiguration, responseCode, new ArrayList<EventResponse>(), vtnRequestID);
 		}
+
 		Set<String> validSignalNames = new HashSet<>();
 		Set<String> validSignalTypes = new HashSet<>();
 
@@ -182,10 +182,10 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		}
 
 		try {
-			timeline.synchronizeOadrDistributeEvent(vtnConfiguration, event);
+			//timeline.synchronizeOadrDistributeEvent(vtnConfiguration, event);
 			List<EventResponse> eventResponses = new ArrayList<>();
-			for (Iterator<OadrEvent> iterator = event.getOadrEvent().iterator(); iterator.hasNext();) {
-				OadrEvent next = iterator.next();
+
+			for (OadrEvent next : event.getOadrEvent()) {
 				List<EiEventSignalType> signals = next.getEiEvent().getEiEventSignals().getEiEventSignal();
 
 				for (EiEventSignalType signal : signals) {
@@ -193,43 +193,52 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 						LOGGER.error("Unsupported signal name: " + signal.getSignalName());
 						responseCode = Oadr20bApplicationLayerErrorCode.SIGNAL_NOT_SUPPORTED_460;
 						hasError = true;
-
 					}
-					 if (!validSignalTypes.contains(signal.getSignalType().value())) {
-					     LOGGER.error("Unsupported signal type: " + signal.getSignalType().value());
-					     responseCode = Oadr20bApplicationLayerErrorCode.SIGNAL_NOT_SUPPORTED_460;
-					     hasError = true;
-					 }
+					if (!validSignalTypes.contains(signal.getSignalType().value())) {
+						LOGGER.error("Unsupported signal type: " + signal.getSignalType().value());
+						responseCode = Oadr20bApplicationLayerErrorCode.SIGNAL_NOT_SUPPORTED_460;
+						hasError = true;
+					}
 				}
 
-				Optional<EventResponse> processOadrEvent = processOadrEvent(vtnConfiguration, vtnRequestID, next);
-                processOadrEvent.ifPresent(eventResponses :: add);
+
+				Optional<EventResponse> processOadrEvent = processOadrEvent(vtnConfiguration, vtnRequestID,responseCode, next);
+				processOadrEvent.ifPresent(eventResponses::add);
 
 				if (hasError) {
-					return getErrorResponseType(vtnConfiguration, responseCode, eventResponses, vtnRequestID);
+					return getErrorResponseType(vtnConfiguration, HttpStatus.OK_200, eventResponses, vtnRequestID);
 				}
 			}
 
 			if (!eventResponses.isEmpty()) {
-				OadrCreatedEventType build = Oadr20bEiEventBuilders.newCreatedEventBuilder(
-						Oadr20bResponseBuilders.newOadr20bEiResponseBuilder("", responseCode).build(),
-						vtnConfiguration.getVenId()).addEventResponse(eventResponses).build();
-					try {
-						multiVtnConfig.oadrCreatedEvent(vtnConfiguration, build);
-					} catch (Exception e) {
-						LOGGER.error("Can't send oadrCreatedEvent", e);
-					}
+			OadrCreatedEventType createdEvent = Oadr20bEiEventBuilders.newCreatedEventBuilder(
+								Oadr20bResponseBuilders.newOadr20bEiResponseBuilder("", HttpStatus.OK_200).build(),
+								vtnConfiguration.getVenId())
+						.addEventResponse(eventResponses)
+						.build();
+				try {
+					multiVtnConfig.oadrCreatedEvent(vtnConfiguration, createdEvent);
+					LOGGER.info("oadrCreatedEvent successfully sent.");
+				} catch (Exception e) {
+					LOGGER.error("Error sending oadrCreatedEvent", e);
+					responseCode = HttpStatus.INTERNAL_SERVER_ERROR_500;
+					return getErrorResponseType(vtnConfiguration, responseCode, eventResponses, vtnRequestID);
+				}
+
 				return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
 						.build();
 			}
 
 		} catch (Oadr20bDistributeEventApplicationLayerException e) {
-			LOGGER.error("Error in oadrDistributeEvent", e);
+			LOGGER.error("Error processing oadrDistributeEvent", e);
+			responseCode = HttpStatus.INTERNAL_SERVER_ERROR_500;
 			return e.getResponse();
 		}
+
 		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
 				.build();
 	}
+
 
 	private OadrResponseType getErrorResponseType(VtnSessionConfiguration vtnConfiguration, int responseCode, List<EventResponse> eventResponses, String vtnRequestID) {
 		OadrCreatedEventType build = Oadr20bEiEventBuilders.newCreatedEventBuilder(
@@ -242,7 +251,7 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 				LOGGER.error("Can't send oadrCreatedEvent", e);
 			}
 
-		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, responseCode, vtnConfiguration.getVenId())
+		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
 				.build();
 	}
 

@@ -1,10 +1,11 @@
 package com.avob.openadr.dummy.controller;
 
 import com.avob.openadr.client.http.oadr20b.ResponseUtils;
+import com.avob.openadr.dummy.DummyVEN20bEiRegisterPartyListener;
 import com.avob.openadr.dummy.config.VenUrlPath;
 import com.avob.openadr.dummy.entity.VTNConfig;
-import com.avob.openadr.dummy.utils.XmlParserUtil;
 
+import com.avob.openadr.model.oadr20b.builders.eiregisterparty.Oadr20bCancelPartyRegistrationBuilder;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
 import com.avob.openadr.server.oadr20b.ven.service.Oadr20bVENEiRegisterPartyService;
 
@@ -14,7 +15,8 @@ import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import com.avob.openadr.model.oadr20b.oadr.OadrCancelPartyRegistrationType;
+
+
 
 /**
  * @author david
@@ -32,11 +34,22 @@ public class RegistrationController {
     @Resource
     private Oadr20bVENEiRegisterPartyService oadr20bVENEiRegisterPartyService;
 
+    @Resource
+  private DummyVEN20bEiRegisterPartyListener oadr20bVENEiRegisterPartyServiceListener;
+
     @RequestMapping(value = "/create", method = RequestMethod.POST)
     @ResponseBody
     public String create(@RequestBody VTNConfig vtnConfig) throws Exception {
         loadConfig(vtnConfig);
       oadr20bVENEiRegisterPartyService.postRegistration(vtnSessionConfiguration);
+        return ResponseUtils.getResString();
+
+    }
+    @RequestMapping(value = "/query", method = RequestMethod.POST)
+    @ResponseBody
+    public String query(@RequestBody VTNConfig vtnConfig) throws Exception {
+        loadConfig(vtnConfig);
+        oadr20bVENEiRegisterPartyService.initRegistration(vtnSessionConfiguration);
         return ResponseUtils.getResString();
 
     }
@@ -50,9 +63,9 @@ public class RegistrationController {
 
     @RequestMapping(value = "/cancel", method = RequestMethod.POST)
     @ResponseBody
-    public String cancel (@RequestBody VTNConfig vtnConfig) throws Exception {
-            String preload = loadConfig(vtnConfig);
-           oadr20bVENEiRegisterPartyService.oadrCancelPartyRegistration(vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload,OadrCancelPartyRegistrationType.class));
+    public String cancel (@RequestBody VTNConfig vtnConfig) {
+                loadConfig(vtnConfig);
+           oadr20bVENEiRegisterPartyService.cancelRegistration(vtnSessionConfiguration);
            return ResponseUtils.getResString();
     }
 

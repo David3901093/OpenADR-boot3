@@ -160,4 +160,10 @@ public class OadrHttpVenClient20b {
 				Oadr20bUrlPath.EI_REGISTER_PARTY_SERVICE, OadrCreatedPartyRegistrationType.class);
 	}
 
+    public void oadrResponse(OadrResponseType response)throws Oadr20bException, Oadr20bHttpLayerException, Oadr20bXMLSignatureException,
+			Oadr20bXMLSignatureValidationException
+	{
+		client.post(Oadr20bFactory.createOadrResponse(response), Oadr20bUrlPath.EI_EVENT_SERVICE,
+				OadrResponseType.class);
+    }
 }

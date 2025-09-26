@@ -16,8 +16,15 @@ import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureValidationExc
 import com.avob.openadr.model.oadr20b.oadr.OadrCancelOptType;
 import com.avob.openadr.model.oadr20b.oadr.OadrCreateOptType;
 import com.avob.openadr.model.oadr20b.oadr.OadrCreatedOptType;
+import com.avob.openadr.model.oadr20b.ei.OptTypeType;
 import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
+
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class Oadr20bVENEiOptService {
@@ -26,9 +33,6 @@ public class Oadr20bVENEiOptService {
 	@Resource
 	private MultiVtnConfig multiVtnConfig;
 
-	public void oadrCreatedOpt(VtnSessionConfiguration vtnConfig, OadrCreatedOptType oadrCreatedOpt) {
-
-		}
 
 	public void oadrCancelOpt(VtnSessionConfiguration vtnConfig, OadrCancelOptType oadrCancelOptType) {
 
@@ -44,10 +48,16 @@ public class Oadr20bVENEiOptService {
 	public void createOpt(VtnSessionConfiguration vtnConfig, OadrCreateOptType oadrCreateOptType) {
 
 		try {
+			Instant now = Instant.now();
+			XMLGregorianCalendar xmlDateTime = DatatypeFactory.newInstance().newXMLGregorianCalendar(
+					DateTimeFormatter.ISO_INSTANT.format(now)
+			);
+			oadrCreateOptType.setCreatedDateTime(xmlDateTime);
+			oadrCreateOptType.getVavailability().getComponents().getAvailable().get(0).getProperties().getDtstart().setDateTime(xmlDateTime);
 			multiVtnConfig.oadrCreateOpt(vtnConfig, oadrCreateOptType);
-		} catch (XmppStringprepException | NotConnectedException | Oadr20bException | Oadr20bHttpLayerException
-				| Oadr20bXMLSignatureException | Oadr20bXMLSignatureValidationException | Oadr20bMarshalException
-				| InterruptedException e) {
+		} catch (XmppStringprepException | NotConnectedException | Oadr20bException | Oadr20bHttpLayerException |
+                 Oadr20bXMLSignatureException | Oadr20bXMLSignatureValidationException | Oadr20bMarshalException |
+                 InterruptedException | DatatypeConfigurationException e) {
 			LOGGER.error("Can't create opt", e);
 		}
 	}

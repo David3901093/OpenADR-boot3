@@ -1,8 +1,9 @@
 package com.avob.openadr.dummy;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-import com.avob.openadr.model.oadr20b.exception.Oadr20bException;
 import com.avob.openadr.server.oadr20b.ven.service.Oadr20bVENEiEventService;
 import  jakarta.annotation.PostConstruct;
 import  jakarta.annotation.Resource;
@@ -46,6 +47,8 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	@Resource
 	private Oadr20bVENEiEventService oadr20bVENEiEventService;
 
+
+
 	@PostConstruct
 	public void init() {
 		oadr20bVENEiRegisterPartyService.addListener(this);
@@ -55,7 +58,7 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	void applicationReadyEvent() {
 		for (VtnSessionConfiguration vtnSessionConfiguration : multiVtnConfig.getMultiConfig().values()) {
 			if (oadr20bVENEiRegisterPartyService != null) {
-				oadr20bVENEiRegisterPartyService.postRegistration(vtnSessionConfiguration);
+				oadr20bVENEiRegisterPartyService.initRegistration(vtnSessionConfiguration);
 			}
 		}
 	}
@@ -63,11 +66,12 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	@Override
 	public void onRegistrationSuccess(VtnSessionConfiguration vtnConfiguration,
 			OadrCreatedPartyRegistrationType registration) {
-		oadr20bVENEiReportService.registerReport(vtnConfiguration);
+		oadr20bVENEiReportService.registerReport(vtnConfiguration,null);
 		//oadr20bVENEiReportService.createReportMetadata(vtnConfiguration);
         try {
             sendOadrEvent(vtnConfiguration);
 			initOpt(vtnConfiguration);
+			vtnConfiguration.setVenRegistrationId(registration.getRegistrationID());
         } catch (Exception e) {
 			LOGGER.error("Can't send event", e);
         }
@@ -92,11 +96,13 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	private void initOpt(VtnSessionConfiguration vtnConfiguration) {
 		String requestId = UUID.randomUUID().toString();
 		String optId = "0";
+		String marketContext = "http://2/03/13/0001";
 		OadrCreateOptType oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId,
 				vtnConfiguration.getVenId(), System.currentTimeMillis(), Oadr20bEiOptBuilders
 						.newOadr20bVavailabilityBuilder().addPeriod(System.currentTimeMillis(), "PT24H").build(),
-				optId, OptTypeType.OPT_OUT, OptReasonEnumeratedType.NOT_PARTICIPATING).build();
+				optId, OptTypeType.OPT_OUT, OptReasonEnumeratedType.NOT_PARTICIPATING,marketContext).build();
 
 		oadr20bVENEiOptService.createOpt(vtnConfiguration, oadrCreateOptType);
 	}
+
 }

@@ -1,8 +1,14 @@
 package com.avob.openadr.dummy;
 
+import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bUpdateReportBuilder;
+import com.avob.openadr.model.oadr20b.exception.*;
+import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
+import com.avob.openadr.server.oadr20b.ven.service.UpdateReportOrchestratorService;
 import  jakarta.annotation.PostConstruct;
 import  jakarta.annotation.Resource;
 
+import org.jivesoftware.smack.SmackException;
+import org.jxmpp.stringprep.XmppStringprepException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,6 +39,9 @@ public class DummyVEN20bEiReportListener
 	@Resource
 	private Oadr20bVENEiReportService oadr20bVENEiReportService;
 
+	@Resource
+	private MultiVtnConfig multiVtnConfig;
+
 	@PostConstruct
 	public void init() {
 		oadr20bVENEiReportService.addVenListener(this);
@@ -43,7 +52,7 @@ public class DummyVEN20bEiReportListener
 		LOGGER.info("Dummy received: oadrCreateReport");
 		requestedReportSimulator.create(vtnConfiguration, oadrCreateReport);
 
-	}
+    }
 
 	@Override
 	public void onCancelReport(VtnSessionConfiguration vtnConfiguration, OadrCancelReportType oadrCancelReport) {

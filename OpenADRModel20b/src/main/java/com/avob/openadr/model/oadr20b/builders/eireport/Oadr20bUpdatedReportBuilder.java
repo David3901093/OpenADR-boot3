@@ -3,6 +3,10 @@ package com.avob.openadr.model.oadr20b.builders.eireport;
 import com.avob.openadr.model.oadr20b.Oadr20bFactory;
 import com.avob.openadr.model.oadr20b.oadr.OadrCancelReportType;
 import com.avob.openadr.model.oadr20b.oadr.OadrUpdatedReportType;
+import com.avob.openadr.model.oadr20b.oadr.OadrReportType;
+
+import java.time.OffsetDateTime;
+
 
 public class Oadr20bUpdatedReportBuilder {
 
@@ -30,5 +34,6 @@ public class Oadr20bUpdatedReportBuilder {
     public OadrUpdatedReportType build() {
         return oadrUpdatedReportType;
     }
+
 
 }

@@ -42,6 +42,16 @@ public class VtnSessionConfiguration {
 	private SSLContext sslContext;
 	private Map<String, OadrReportType> venRegisterReport;
 
+	public String getVenRegistrationId() {
+		return venRegistrationId;
+	}
+
+	public void setVenRegistrationId(String venRegistrationId) {
+		this.venRegistrationId = venRegistrationId;
+	}
+
+	private String venRegistrationId;
+
 	public String getContextPath() {
 		return contextPath;
 	}

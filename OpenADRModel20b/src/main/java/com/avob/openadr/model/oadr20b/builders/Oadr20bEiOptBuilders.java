@@ -34,16 +34,19 @@ public class Oadr20bEiOptBuilders {
 
     public static Oadr20bCreateOptBuilder newOadr20bCreateOptBuilder(String requestId, String venId,
             Long createdDatetime, String eventId, long modificationNumber, String optId, OptTypeType optType,
-            OptReasonEnumeratedType optReason) {
+            OptReasonEnumeratedType optReason,String marketContext) {
         return new Oadr20bCreateOptBuilder(requestId, venId, createdDatetime, eventId, modificationNumber, optId,
-                optType, optReason).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value());
+                optType, optReason, marketContext).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value());
     }
 
     public static Oadr20bCreateOptBuilder newOadr20bCreateOptBuilder(String requestId, String venId,
             Long createdDatetime, VavailabilityType vavailabilityType, String optId, OptTypeType optType,
-            OptReasonEnumeratedType optReason) {
+            OptReasonEnumeratedType optReason,String marketContext) {
+        if (marketContext==null){
+            marketContext="http://2/03/13/0001";
+        }
         return new Oadr20bCreateOptBuilder(requestId, venId, createdDatetime, vavailabilityType, optId, optType,
-                optReason).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value());
+                optReason,marketContext).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value());
     }
 
     public static Oadr20bVavailabilityBuilder newOadr20bVavailabilityBuilder() {

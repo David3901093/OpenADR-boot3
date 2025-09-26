@@ -1,7 +1,5 @@
 package com.avob.openadr.model.oadr20b.builders;
 
-import java.util.Arrays;
-
 import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bCancelReportBuilder;
 import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bCanceledReportBuilder;
 import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bCreateReportBuilder;
@@ -61,7 +59,7 @@ public class Oadr20bEiReportBuilders {
 	}
 
 	public static Oadr20bUpdatedReportBuilder newOadr20bUpdatedReportBuilder(String requestId, int responseCode,
-			String venId) {
+                                                                             String venId) {
 		return new Oadr20bUpdatedReportBuilder(requestId, responseCode, venId)
 				.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value());
 	}

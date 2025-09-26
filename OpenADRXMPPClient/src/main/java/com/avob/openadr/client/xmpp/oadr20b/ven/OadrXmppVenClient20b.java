@@ -262,4 +262,10 @@ public class OadrXmppVenClient20b {
 	XmppStringprepException, NotConnectedException, Oadr20bMarshalException, InterruptedException {
 		this.sendRegisterPartyMessage(payload);
 	}
+
+    public void oadrResponse(OadrResponseType response) throws Oadr20bException,
+			Oadr20bHttpLayerException, Oadr20bXMLSignatureException, Oadr20bXMLSignatureValidationException,
+			XmppStringprepException, NotConnectedException, Oadr20bMarshalException, InterruptedException{
+		this.sendEventMessage(response);
+    }
 }

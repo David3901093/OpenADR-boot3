@@ -227,7 +227,6 @@ public class Oadr20bVENPayloadService {
 				OadrDistributeEventType val = (OadrDistributeEventType) payload;
 
 				OadrResponseType response = eventService.oadrDistributeEvent(session, val);
-
 				responseService.oadrResponse(session, response);
 
 			} else if (payload instanceof OadrCancelPartyRegistrationType) {
@@ -274,7 +273,7 @@ public class Oadr20bVENPayloadService {
 				LOGGER.info("Retrieved OadrCreateReportType");
 				OadrCreateReportType val = (OadrCreateReportType) payload;
 
-				OadrCreatedReportType oadrCreateReport = reportService.oadrCreateReport(session, val);
+				OadrCreatedReportType oadrCreateReport = reportService.oadrCreateReport(session, val, signed);
 
 				OadrResponseType response = multiHttpClientConfig.oadrCreatedReport(oadrCreateReport);
 

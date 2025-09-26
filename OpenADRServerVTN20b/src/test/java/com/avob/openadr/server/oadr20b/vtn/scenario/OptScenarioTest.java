@@ -117,7 +117,7 @@ public class OptScenarioTest {
 
 		// EI OPT CONTROLLER - invalid target another VEN
 		OadrCreateOptType oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId,
-				mockVen.getVenId(), createdDatetime, vavailabilityType, optId, optType, optReason)
+				mockVen.getVenId(), createdDatetime, vavailabilityType, optId, optType, optReason,null)
 				.withMarketContext(OadrDataBaseSetup.MARKET_CONTEXT_NAME).build();
 		oadrCreateOptType.setEiTarget(new Oadr20bEiTargetTypeBuilder().addVenId("mouaiccool").build());
 		OadrCreatedOptType opt = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
@@ -128,7 +128,7 @@ public class OptScenarioTest {
 
 		// EI OPT CONTROLLER - send OadrCreateOptType
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, vavailabilityType, optId, optType, optReason)
+				createdDatetime, vavailabilityType, optId, optType, optReason,null)
 				.withMarketContext(OadrDataBaseSetup.MARKET_CONTEXT_NAME).build();
 		opt = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
 		assertEquals(String.valueOf(HttpStatus.OK_200), opt.getEiResponse().getResponseCode());
@@ -238,7 +238,7 @@ public class OptScenarioTest {
 
 		// EI OPT CONTROLLER - test cannot set opt message about another VEN
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, "mouaiccool", createdDatetime,
-				vavailabilityType, optId, optType, optReason).withMarketContext(OadrDataBaseSetup.MARKET_CONTEXT_NAME)
+				vavailabilityType, optId, optType, optReason,null).withMarketContext(OadrDataBaseSetup.MARKET_CONTEXT_NAME)
 				.build();
 
 		OadrCreatedOptType oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200,
@@ -251,7 +251,7 @@ public class OptScenarioTest {
 		// EI OPT CONTROLLER - test create invalid vavailability opt on unknown ven
 		// resource
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, vavailabilityType, optId, optType, optReason).addTargetedResource("fakeResource")
+				createdDatetime, vavailabilityType, optId, optType, optReason,null).addTargetedResource("fakeResource")
 				.build();
 
 		oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
@@ -262,7 +262,7 @@ public class OptScenarioTest {
 		// without
 		// marketcontext
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, vavailabilityType, optId, optType, optReason)
+				createdDatetime, vavailabilityType, optId, optType, optReason,null)
 				.addTargetedResource(OadrDataBaseSetup.VEN_RESOURCE_1).build();
 
 		oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
@@ -395,7 +395,7 @@ public class OptScenarioTest {
 
 		// EI OPT CONTROLLER - invalid not found related event
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, String.valueOf(eventId - 1), modificationNumber, eventOptId, optType, optReason)
+				createdDatetime, String.valueOf(eventId - 1), modificationNumber, eventOptId, optType, optReason,null)
 				.build();
 		oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
 		assertEquals(String.valueOf(Oadr20bApplicationLayerErrorCode.INVALID_ID_452),
@@ -405,7 +405,7 @@ public class OptScenarioTest {
 
 		// EI OPT CONTROLLER - invalid modification number don't match
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, String.valueOf(eventId), modificationNumber + 1, eventOptId, optType, optReason)
+				createdDatetime, String.valueOf(eventId), modificationNumber + 1, eventOptId, optType, optReason,null)
 				.build();
 		oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
 		assertEquals(String.valueOf(Oadr20bApplicationLayerErrorCode.INVALID_DATA_454),
@@ -416,7 +416,7 @@ public class OptScenarioTest {
 		// EI OPT CONTROLLER - test create opt related to specific event with different
 		// optId
 		oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId, mockVen.getVenId(),
-				createdDatetime, String.valueOf(eventId), modificationNumber, eventOptId, optType, optReason).build();
+				createdDatetime, String.valueOf(eventId), modificationNumber, eventOptId, optType, optReason,null).build();
 		oadrCreatedOptType = mockVen.opt(oadrCreateOptType, HttpStatus.OK_200, OadrCreatedOptType.class);
 
 		assertEquals(String.valueOf(HttpStatus.OK_200), oadrCreatedOptType.getEiResponse().getResponseCode());

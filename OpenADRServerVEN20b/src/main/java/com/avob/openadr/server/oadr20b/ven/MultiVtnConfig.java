@@ -28,8 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.context.annotation.Lazy;
+
 import org.springframework.core.env.AbstractEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.Environment;
@@ -45,11 +44,10 @@ import com.avob.openadr.client.xmpp.oadr20b.ven.OadrXmppVenClient20b;
 import com.avob.openadr.model.oadr20b.Oadr20bFactory;
 import com.avob.openadr.model.oadr20b.Oadr20bSecurity;
 import com.avob.openadr.model.oadr20b.builders.Oadr20bEiReportBuilders;
-import com.avob.openadr.model.oadr20b.builders.Oadr20bResponseBuilders;
 import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bRegisterReportBuilder;
 import com.avob.openadr.model.oadr20b.ei.ReportSpecifierType;
 import com.avob.openadr.model.oadr20b.ei.SpecifierPayloadType;
-import com.avob.openadr.model.oadr20b.errorcodes.Oadr20bApplicationLayerErrorCode;
+import com.avob.openadr.model.oadr20b.oadr.OadrResponseType;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bHttpLayerException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bMarshalException;
@@ -265,18 +263,13 @@ public class MultiVtnConfig {
 
 	public boolean checkReportSpecifier(VtnSessionConfiguration vtnConfig, String requestId, String reportRequestId,
 			ReportSpecifierType reportSpecifier) throws Oadr20bInvalidReportRequestException {
+		boolean valid=true;
 
 		String reportSpecifierID = reportSpecifier.getReportSpecifierID();
 		if (reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())) == null || !reports
 				.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).containsKey(reportSpecifierID)) {
-			throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-					.newOadr20bResponseBuilder(requestId, Oadr20bApplicationLayerErrorCode.REPORT_NOT_SUPPORTED_461,
-							vtnConfig.getVenId())
-					.withDescription(
-							String.format("Invalid create report request: %s - report specifier %s not suported",
-									reportRequestId, reportSpecifierID))
-					.build());
-
+			LOGGER.error("Report specifier " + reportSpecifierID + " is not known");
+			return false;
 		}
 
 		OadrReportType report = reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl()))
@@ -293,33 +286,18 @@ public class MultiVtnConfig {
 		Long reportBackDurationMillis = Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration());
 
 		if (reportBackDurationMillis < granularityMillis) {
-			throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-					.newOadr20bResponseBuilder(requestId, Oadr20bApplicationLayerErrorCode.INVALID_DATA_454,
-							vtnConfig.getVenId())
-					.withDescription(String.format(
-							"Invalid create report request: %s - Granularity duration must be less than report back duration",
-							reportRequestId))
-					.build());
-
+			LOGGER.error("Report back duration is less than granularity");
+			valid =false;
 		}
 
 		List<SpecifierPayloadType> specifierPayload = reportSpecifier.getSpecifierPayload();
-		boolean isApplicable=true;
-		boolean valid=true;
+
 		for (SpecifierPayloadType specifier : specifierPayload) {
-			if ("x-notApplicable".equals(specifier.getReadingType())){
-				isApplicable=false;
-			}
 			String reportDescriptionUID = getReportDescriptionUID(specifier);
 			if (!reportDescriptions.containsKey(reportDescriptionUID)) {
-				throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-						.newOadr20bResponseBuilder(requestId, Oadr20bApplicationLayerErrorCode.REPORT_NOT_SUPPORTED_461,
-								vtnConfig.getVenId())
-						.withDescription(
-								String.format("Invalid create report request: %s - report specifier %s not suported",
-										reportRequestId, reportSpecifierID))
-						.build());
-
+				LOGGER.error("Report description " + reportDescriptionUID + " is not known");
+				valid=false;
+				continue;
 			}
 
 			OadrReportDescriptionType oadrReportDescriptionType = reportDescriptions.get(reportDescriptionUID);
@@ -332,51 +310,25 @@ public class MultiVtnConfig {
 				if (oadrSamplingRate.getOadrMinPeriod() != null) {
 					minSamplingRateMillis = Oadr20bFactory
 							.xmlDurationToMillisecond(oadrSamplingRate.getOadrMinPeriod());
-					if (isApplicable && granularityMillis < minSamplingRateMillis) {
-						throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-								.newOadr20bResponseBuilder(requestId,
-										Oadr20bApplicationLayerErrorCode.REPORT_NOT_SUPPORTED_461, vtnConfig.getVenId())
-								.withDescription(String.format(
-										"Invalid create report request: %s - granularity must be greater than every report description oadrMinPeriod if defined",
-										reportRequestId, reportSpecifierID))
-								.build());
-
-					}else if (granularityMillis < minSamplingRateMillis){
+					if ( granularityMillis < minSamplingRateMillis) {
+						LOGGER.error("Min sampling rate is less than granularity");
 						valid=false;
 					}
 				}
 				if (oadrSamplingRate.getOadrMinPeriod() != null) {
 					maxSamplingRateMillis = Oadr20bFactory
 							.xmlDurationToMillisecond(oadrSamplingRate.getOadrMaxPeriod());
-					if ( isApplicable && reportBackDurationMillis > maxSamplingRateMillis) {
-						throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-								.newOadr20bResponseBuilder(requestId,
-										Oadr20bApplicationLayerErrorCode.REPORT_NOT_SUPPORTED_461, vtnConfig.getVenId())
-								.withDescription(String.format(
-										"Invalid create report request: %s - report back duration must be greater than every report description oadrMaxPeriod if defined",
-										reportRequestId, reportSpecifierID))
-								.build());
-					}
-					else if (reportBackDurationMillis > maxSamplingRateMillis){
+					if ( reportBackDurationMillis > maxSamplingRateMillis) {
+						LOGGER.error("Max sampling rate is greater than report back duration");
 						valid=false;
 					}
 				}
 				oadrOnChange = oadrSamplingRate.isOadrOnChange();
 			}
 
-			if (isApplicable && (!oadrOnChange && (granularityMillis == 0 || reportBackDurationMillis == 0))) {
-				throw new Oadr20bInvalidReportRequestException(Oadr20bResponseBuilders
-						.newOadr20bResponseBuilder(requestId, Oadr20bApplicationLayerErrorCode.REPORT_NOT_SUPPORTED_461,
-								vtnConfig.getVenId())
-						.withDescription(String.format(
-								"Invalid create report request: %s - granularity and report back duration equals 0 while at least on report description do not support oadrOnChange",
-								reportRequestId, reportSpecifierID))
-						.build());
-			}
-			if (granularityMillis==0){
-				if (!oadrOnChange && reportBackDurationMillis == 0) {
-					valid = false;
-				}
+			if (!oadrOnChange && (granularityMillis == 0 || reportBackDurationMillis == 0)) {
+				LOGGER.error("Granularity and report back duration must be greater than 0");
+				valid=false;
 			}
 		}
 
@@ -388,9 +340,9 @@ public class MultiVtnConfig {
 		if (description.getReadingType() != null) {
 			builder.append(description.getReadingType());
 		}
-		if (description.getItemBase() != null) {
-			builder.append(description.getItemBase().getName().toString());
-		}
+		//if (description.getItemBase() != null) {
+		//	builder.append(description.getItemBase().getName().toString());
+		//}
 		return builder.toString();
 	}
 
@@ -400,9 +352,9 @@ public class MultiVtnConfig {
 			builder.append(description.getReadingType());
 		}
 
-		if (description.getItemBase() != null) {
-			builder.append(description.getItemBase().getName().toString());
-		}
+		//if (description.getItemBase() != null) {
+		//	builder.append(description.getItemBase().getName().toString());
+		//}
 
 		return builder.toString();
 	}
@@ -564,4 +516,11 @@ public class MultiVtnConfig {
 		}
 	}
 
+	public void oadrResponse(VtnSessionConfiguration vtnConfig, OadrResponseType response) throws Oadr20bMarshalException, Oadr20bHttpLayerException, Oadr20bXMLSignatureException, NotConnectedException, Oadr20bXMLSignatureValidationException, XmppStringprepException, InterruptedException, Oadr20bException {
+		if (vtnConfig.getVtnUrl() != null) {
+			multiHttpClientConfig.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).oadrResponse(response);
+		} else if (vtnConfig.getVtnXmppHost() != null && vtnConfig.getVtnXmppPort() != null) {
+			multiXmppClientConfig.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).oadrResponse(response);
+		}
+	}
 }

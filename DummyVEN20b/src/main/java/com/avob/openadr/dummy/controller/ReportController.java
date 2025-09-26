@@ -93,7 +93,7 @@ public class ReportController {
                 Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(UUID.randomUUID().toString() , vtnSessionConfiguration.getVenId());
         OadrUpdateReportType updateReportType = updateReportBuilder.build();
         oadr20bVENEiReportService.updateReport(vtnSessionConfiguration, updateReportType);
-        OadrCreatedReportType oadrCreatedReportType = oadr20bVENEiReportService.oadrCreateReport(vtnSessionConfiguration, reportMetadata);
+        OadrCreatedReportType oadrCreatedReportType = oadr20bVENEiReportService.oadrCreateReport(vtnSessionConfiguration, reportMetadata,false);
         String registeredString = ResponseUtils.getResString();
         OadrPayload oadrPayload =   XmlParserUtil.parseOadrXml(registeredString, OadrPayload.class);
         OadrSignedObject oadrSignedObject = oadrPayload.getOadrSignedObject();

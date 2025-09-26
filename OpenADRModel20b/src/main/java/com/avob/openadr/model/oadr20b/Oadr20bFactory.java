@@ -530,6 +530,7 @@ public class Oadr20bFactory {
 		OadrUpdateReportType createOadrUpdateReportType = factory.createOadrUpdateReportType();
 		createOadrUpdateReportType.setRequestID(requestId);
 		createOadrUpdateReportType.setVenID(venId);
+		createOadrUpdateReportType.setSchemaVersion("2.0b");
 		return createOadrUpdateReportType;
 	}
 

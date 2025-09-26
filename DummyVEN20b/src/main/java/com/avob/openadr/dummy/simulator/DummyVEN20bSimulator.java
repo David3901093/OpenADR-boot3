@@ -39,6 +39,7 @@ public class DummyVEN20bSimulator {
 	@Resource
 	private Oadr20bVENEiEventService oadr20bVENEiEventService;
 
+
 	private List<Simulator> simulators = Arrays.asList(new ThermostatSimulator(), new SmartEnergyModuleSimulator());
 
 	public interface Simulator {
