@@ -122,10 +122,6 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 		boolean sendUpdateReport = true;
 		try {
 			int CreatedReportCode = HttpStatus.OK_200;
-			if (vtnConfig.getPullModel()){
-				 CreatedReportCode = 0;
-			}
-
 			List<OadrReportRequestType> oadrReportRequest = oadrCreateReportType.getOadrReportRequest();
 			if (oadrReportRequest != null) {
 				for (OadrReportRequestType request : oadrReportRequest) {
@@ -162,7 +158,10 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 
 									multiVtnConfig.oadrUpdateReport(vtnConfig, Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID,vtnConfig.getVenId()).buildDefaultUpdateReport(requestID,vtnConfig.getVenId(),reportRequestID,reportSpecifierID,reportSpecifier,resolveReportName(vtnConfig,reportSpecifierID)));
 								}else{
-									multiVtnConfig.oadrUpdateReport(vtnConfig, Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID,vtnConfig.getVenId()).build());
+									//  In push model,   an update report is needed to reply to the VTN
+									if (!vtnConfig.getPullModel()){
+										multiVtnConfig.oadrUpdateReport(vtnConfig, Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID,vtnConfig.getVenId()).build());
+									}
 									break;
 								}
                             }catch (Exception e){

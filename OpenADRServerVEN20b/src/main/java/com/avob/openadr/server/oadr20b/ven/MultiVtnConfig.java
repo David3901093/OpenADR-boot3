@@ -299,7 +299,9 @@ public class MultiVtnConfig {
 			if (!reportDescriptions.containsKey(reportDescriptionUID)) {
 				LOGGER.error("Report description " + reportDescriptionUID + " is not known");
 				valid=ReportSpecifierStatus.INVALID_REPORT_DESCRIPTION_ID;
-				break;
+				continue;
+			}else {
+				valid=ReportSpecifierStatus.OK;
 			}
 
 			OadrReportDescriptionType oadrReportDescriptionType = reportDescriptions.get(reportDescriptionUID);
