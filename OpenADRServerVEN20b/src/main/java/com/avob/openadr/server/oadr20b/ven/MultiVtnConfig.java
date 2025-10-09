@@ -261,17 +261,18 @@ public class MultiVtnConfig {
 		return builder.build();
 	}
 
-	public boolean checkReportSpecifier(VtnSessionConfiguration vtnConfig, String requestId, String reportRequestId,
+	public Integer checkReportSpecifier(VtnSessionConfiguration vtnConfig, String requestId, String reportRequestId,
 			ReportSpecifierType reportSpecifier) throws Oadr20bInvalidReportRequestException {
-		boolean valid=true;
-
+		int valid=ReportSpecifierStatus.OK;
+		// check report specifier
 		String reportSpecifierID = reportSpecifier.getReportSpecifierID();
+		// if report specifier is not known or reportSpecifierID is not included in VTN session configuration
 		if (reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())) == null || !reports
 				.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).containsKey(reportSpecifierID)) {
 			LOGGER.error("Report specifier " + reportSpecifierID + " is not known");
-			return false;
+			return ReportSpecifierStatus.INVALID_REPORT_SPECIFIER_ID;
 		}
-
+		// check report description
 		OadrReportType report = reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl()))
 				.get(reportSpecifierID);
 		Map<String, OadrReportDescriptionType> reportDescriptions = report.getOadrReportDescription().stream()
@@ -284,20 +285,21 @@ public class MultiVtnConfig {
 
 		Long granularityMillis = Oadr20bFactory.xmlDurationToMillisecond(granularity.getDuration());
 		Long reportBackDurationMillis = Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration());
-
+		// check report back duration
 		if (reportBackDurationMillis < granularityMillis) {
 			LOGGER.error("Report back duration is less than granularity");
-			valid =false;
+			valid =ReportSpecifierStatus.INVALID_REPORT_BACK_DURATION;
 		}
 
 		List<SpecifierPayloadType> specifierPayload = reportSpecifier.getSpecifierPayload();
 
 		for (SpecifierPayloadType specifier : specifierPayload) {
 			String reportDescriptionUID = getReportDescriptionUID(specifier);
+			// check report descriptionID
 			if (!reportDescriptions.containsKey(reportDescriptionUID)) {
 				LOGGER.error("Report description " + reportDescriptionUID + " is not known");
-				valid=false;
-				continue;
+				valid=ReportSpecifierStatus.INVALID_REPORT_DESCRIPTION_ID;
+				break;
 			}
 
 			OadrReportDescriptionType oadrReportDescriptionType = reportDescriptions.get(reportDescriptionUID);
@@ -310,25 +312,27 @@ public class MultiVtnConfig {
 				if (oadrSamplingRate.getOadrMinPeriod() != null) {
 					minSamplingRateMillis = Oadr20bFactory
 							.xmlDurationToMillisecond(oadrSamplingRate.getOadrMinPeriod());
+					// check min sampling rate
 					if ( granularityMillis < minSamplingRateMillis) {
 						LOGGER.error("Min sampling rate is less than granularity");
-						valid=false;
+						valid= ReportSpecifierStatus.INVALID_MIN_SAMPLING_RATE;
 					}
 				}
 				if (oadrSamplingRate.getOadrMinPeriod() != null) {
 					maxSamplingRateMillis = Oadr20bFactory
 							.xmlDurationToMillisecond(oadrSamplingRate.getOadrMaxPeriod());
+					// check max sampling rate
 					if ( reportBackDurationMillis > maxSamplingRateMillis) {
 						LOGGER.error("Max sampling rate is greater than report back duration");
-						valid=false;
+						valid = ReportSpecifierStatus.INVALID_MAX_SAMPLING_RATE;
 					}
 				}
 				oadrOnChange = oadrSamplingRate.isOadrOnChange();
 			}
-
+			// check no report back duration
 			if (!oadrOnChange && (granularityMillis == 0 || reportBackDurationMillis == 0)) {
-				LOGGER.error("Granularity and report back duration must be greater than 0");
-				valid=false;
+				LOGGER.warn("Granularity and report back duration equal to 0");
+				valid=ReportSpecifierStatus.NO_REPORT_BACK_DURATION ;
 			}
 		}
 

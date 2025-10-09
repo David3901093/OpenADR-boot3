@@ -132,7 +132,7 @@ public class UpdateReportOrchestratorService {
 			DurationPropType granularity = reportRequest.getReportSpecifier().getGranularity();
 			DurationPropType reportBackDuration = reportRequest.getReportSpecifier().getReportBackDuration();
 			long granularityMs = Oadr20bFactory.xmlDurationToMillisecond(granularity.getDuration());
-			long reportBackMs = Math.max(Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration()), granularityMs * 2);
+			long reportBackMs = Oadr20bFactory.xmlDurationToMillisecond(reportBackDuration.getDuration());
 
 			reportRequest.getReportSpecifier().getSpecifierPayload().forEach(specifier -> {
 				String rid = specifier.getRID();

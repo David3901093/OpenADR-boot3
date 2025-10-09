@@ -34,8 +34,6 @@ public class RegistrationController {
     @Resource
     private Oadr20bVENEiRegisterPartyService oadr20bVENEiRegisterPartyService;
 
-    @Resource
-  private DummyVEN20bEiRegisterPartyListener oadr20bVENEiRegisterPartyServiceListener;
 
     @RequestMapping(value = "/create", method = RequestMethod.POST)
     @ResponseBody
@@ -67,6 +65,14 @@ public class RegistrationController {
                 loadConfig(vtnConfig);
            oadr20bVENEiRegisterPartyService.cancelRegistration(vtnSessionConfiguration);
            return ResponseUtils.getResString();
+    }
+
+    @RequestMapping(value = "/maintain", method = RequestMethod.POST)
+    @ResponseBody
+    public String maintain (@RequestBody VTNConfig vtnConfig) {
+        loadConfig(vtnConfig);
+        oadr20bVENEiRegisterPartyService.maintainRegistration(vtnSessionConfiguration);
+        return ResponseUtils.getResString();
     }
 
 

@@ -70,7 +70,8 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 		//oadr20bVENEiReportService.createReportMetadata(vtnConfiguration);
         try {
             sendOadrEvent(vtnConfiguration);
-			initOpt(vtnConfiguration);
+			//initOpt(vtnConfiguration,registration,"http://MarketContext1");
+			// save registrationID in configuration
 			vtnConfiguration.setVenRegistrationId(registration.getRegistrationID());
         } catch (Exception e) {
 			LOGGER.error("Can't send event", e);
@@ -93,14 +94,13 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 
 	}
 
-	private void initOpt(VtnSessionConfiguration vtnConfiguration) {
+	private void initOpt(VtnSessionConfiguration vtnConfiguration,String marketContext) {
 		String requestId = UUID.randomUUID().toString();
 		String optId = "0";
-		String marketContext = "http://2/03/13/0001";
 		OadrCreateOptType oadrCreateOptType = Oadr20bEiOptBuilders.newOadr20bCreateOptBuilder(requestId,
 				vtnConfiguration.getVenId(), System.currentTimeMillis(), Oadr20bEiOptBuilders
 						.newOadr20bVavailabilityBuilder().addPeriod(System.currentTimeMillis(), "PT24H").build(),
-				optId, OptTypeType.OPT_OUT, OptReasonEnumeratedType.NOT_PARTICIPATING,marketContext).build();
+				optId, OptTypeType.OPT_OUT, OptReasonEnumeratedType.NOT_PARTICIPATING, marketContext).build();
 
 		oadr20bVENEiOptService.createOpt(vtnConfiguration, oadrCreateOptType);
 	}

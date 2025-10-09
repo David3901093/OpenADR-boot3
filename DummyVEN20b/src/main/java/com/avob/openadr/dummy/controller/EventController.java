@@ -58,7 +58,23 @@ public class EventController {
             String resString = ResponseUtils.getResString();
             String req = request.getScheme() + "://" + request.getServerName()+":"+request.getServerPort();
 
-            return oadr20bVENPayloadService.event(principal.getName(), req, resString);
+            return oadr20bVENPayloadService.event(principal.getName(), req, resString,false);
+        }catch (Exception e){
+            return "error response:"+ e.getMessage();
+        }
+
+
+    }
+    @RequestMapping(value = "/requestForOptOut", method = RequestMethod.POST)
+    @ResponseBody
+    public String requestForOptOut(@RequestBody VTNConfig vtnConfig, Principal principal, HttpServletRequest request) {
+        try {
+            String preload = loadConfig(vtnConfig);
+            multiVtnConfig.oadrRequestEvent(vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload,OadrRequestEventType.class));
+            String resString = ResponseUtils.getResString();
+            String req = request.getScheme() + "://" + request.getServerName()+":"+request.getServerPort();
+
+            return oadr20bVENPayloadService.event(principal.getName(), req, resString, true);
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }

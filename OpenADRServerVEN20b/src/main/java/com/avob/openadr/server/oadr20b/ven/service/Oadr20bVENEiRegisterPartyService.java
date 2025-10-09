@@ -130,13 +130,51 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 	public void clearRegistration(VtnSessionConfiguration vtnConfiguration) {
 		setRegistration(vtnConfiguration, null);
 	}
+	// maintain registration
+	 public void maintainRegistration(VtnSessionConfiguration vtnConfiguration) {
+		 String requestId = java.util.UUID.randomUUID().toString();
 
+		 try {
+			 OadrCreatePartyRegistrationType createPartyRegistration = Oadr20bEiRegisterPartyBuilders
+					 .newOadr20bCreatePartyRegistrationBuilder(requestId,
+							 vtnConfiguration.getVenId(),
+							 SchemaVersionEnumeratedType.OADR_20B.value())
+					 .withOadrTransportName(OadrTransportType.SIMPLE_HTTP)
+					 .withOadrTransportAddress(vtnConfiguration.getVenUrl())
+					 .withOadrReportOnly(vtnConfiguration.getReportOnly())
+					 .withRegistrationId(vtnConfiguration.getVenRegistrationId())
+					 .withOadrVenName(vtnConfiguration.getVenName())
+					 .withOadrXmlSignature(vtnConfiguration.getXmlSignature())
+					 .withOadrHttpPullModel(vtnConfiguration.getPullModel())
+					 .withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
+					 .build();
+			 if (vtnConfiguration.getVtnUrl() != null) {
+				 OadrCreatedPartyRegistrationType oadrCreatedPartyRegistrationType = multiVtnConfig.getMultiHttpClientConfig(vtnConfiguration)
+						 .oadrCreatePartyRegistration(createPartyRegistration);
+				 this.oadrCreatedPartyRegistration(vtnConfiguration, oadrCreatedPartyRegistrationType);
+
+
+			 } else {
+				 multiVtnConfig.getMultiXmppClientConfig(vtnConfiguration)
+						 .oadrCreatePartyRegistration(createPartyRegistration);
+
+			 }
+
+		 } catch (Oadr20bException | Oadr20bHttpLayerException | Oadr20bXMLSignatureException |
+				  Oadr20bXMLSignatureValidationException | Oadr20bMarshalException | IOException |
+				  NotConnectedException | OadrSecurityException e) {
+			 LOGGER.error("Fail to create party registration", e);
+		 } catch (InterruptedException e) {
+			 LOGGER.error("Fail to create party registration", e);
+			 Thread.currentThread().interrupt();
+		 }
+	 }
 	public void reinitRegistration(VtnSessionConfiguration vtnConfiguration) {
 		clearRegistration(vtnConfiguration);
 		oadrPollService.cancelPoll(vtnConfiguration, true);
 		this.initRegistration(vtnConfiguration);
 	}
-
+	//  init  registration with query
 	public void initRegistration(VtnSessionConfiguration vtnConfiguration) {
 
 		String requestId = "0";
@@ -177,6 +215,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 		}
 
 	}
+	// create a new registration
 	public void postRegistration(VtnSessionConfiguration vtnConfiguration) {
 		String requestId = java.util.UUID.randomUUID().toString();
 
@@ -189,7 +228,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 					.withOadrTransportAddress(vtnConfiguration.getVenUrl())
 					.withOadrReportOnly(vtnConfiguration.getReportOnly())
 					.withOadrVenName(vtnConfiguration.getVenName())
-					.withOadrXmlSignature(vtnConfiguration.getXmlSignature()).withRegistrationId(vtnConfiguration.getVenRegistrationId())
+					.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
 					.withOadrHttpPullModel(vtnConfiguration.getPullModel())
 					.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
 					.build();

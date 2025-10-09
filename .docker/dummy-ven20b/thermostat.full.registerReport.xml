@@ -40,8 +40,8 @@
                 <power:itemUnits>Wh</power:itemUnits>
                 <scale:siScaleCode>k</scale:siScaleCode>
             </power:energyReal>
-            <ei:readingType>Direct Read</ei:readingType>
-            <emix:marketContext>http://2/03/13/0001</emix:marketContext>
+            <ei:readingType>x-notApplicable</ei:readingType>
+            <emix:marketContext>http://MarketContext1</emix:marketContext>
             <oadr:oadrSamplingRate>
                 <oadr:oadrMinPeriod>PT1M</oadr:oadrMinPeriod>
                 <oadr:oadrMaxPeriod>PT10M</oadr:oadrMaxPeriod>
@@ -52,6 +52,34 @@
         <ei:reportSpecifierID>PERFORMANCE_KW_REPORT</ei:reportSpecifierID>
         <ei:reportName>METADATA_TELEMETRY_USAGE</ei:reportName>
         <ei:createdDateTime>2025-09-10T01:25:00Z</ei:createdDateTime>
+    </oadr:oadrReport>
+    <oadr:oadrReport>
+        <xcal:duration>
+            <xcal:duration>PT24H</xcal:duration>
+        </xcal:duration>
+        <oadr:oadrReportDescription>
+            <ei:rID>RID_PulseCount_001</ei:rID>
+            <ei:reportDataSource>
+                <ei:resourceID>my resource ID2</ei:resourceID>
+            </ei:reportDataSource>
+            <ei:reportType>usage</ei:reportType>
+            <oadr:pulseCount>
+                <oadr:itemDescription>pulse count</oadr:itemDescription>
+                <oadr:itemUnits>count</oadr:itemUnits>
+                <oadr:pulseFactor>1</oadr:pulseFactor>
+            </oadr:pulseCount>
+            <ei:readingType>Direct Read</ei:readingType>
+            <emix:marketContext>http://MarketContext1</emix:marketContext>
+            <oadr:oadrSamplingRate>
+                <oadr:oadrMinPeriod>PT1M</oadr:oadrMinPeriod>
+                <oadr:oadrMaxPeriod>PT10M</oadr:oadrMaxPeriod>
+                <oadr:oadrOnChange>true</oadr:oadrOnChange>
+            </oadr:oadrSamplingRate>
+        </oadr:oadrReportDescription>
+        <ei:reportRequestID>0</ei:reportRequestID>
+        <ei:reportSpecifierID>PULSE_COUNT_REPORT</ei:reportSpecifierID>
+        <ei:reportName>METADATA_TELEMETRY_USAGE</ei:reportName>
+        <ei:createdDateTime>2025-09-24T06:21:35Z</ei:createdDateTime>
     </oadr:oadrReport>
     <oadr:oadrReport>
         <xcal:duration>
@@ -74,7 +102,7 @@
                 </power:powerAttributes>
             </power:powerReal>
             <ei:readingType>x-notApplicable</ei:readingType>
-            <emix:marketContext>http://2/03/13/0001</emix:marketContext>
+            <emix:marketContext>http://MarketContext1</emix:marketContext>
             <oadr:oadrSamplingRate>
                 <oadr:oadrMinPeriod>PT1M</oadr:oadrMinPeriod>
                 <oadr:oadrMaxPeriod>PT10M</oadr:oadrMaxPeriod>

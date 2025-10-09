@@ -1,15 +1,13 @@
 package com.avob.openadr.server.oadr20b.ven.service;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
+import com.avob.openadr.model.oadr20b.builders.eiopt.Oadr20bCreateOptBuilder;
 import  jakarta.annotation.Resource;
 
 import org.eclipse.jetty.http.HttpStatus;
 
+import com.avob.openadr.model.oadr20b.ei.OptReasonEnumeratedType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -50,8 +48,7 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 	@Resource
 	private MultiVtnConfig multiVtnConfig;
 
-	@Resource
-	private ScheduledExecutorService scheduledExecutorService;
+	private Map<String, OadrEvent> optInEventsMap = new HashMap<>();
 
 	protected List<EventTimelineListener> listeners;
 
@@ -147,21 +144,36 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 	});
 
 	private Optional<EventResponse> processOadrEvent(VtnSessionConfiguration vtnConfiguration, String requestId,int responseCode,
-			OadrEvent event) throws Oadr20bDistributeEventApplicationLayerException {
+			OadrEvent event,boolean isOut) throws Oadr20bDistributeEventApplicationLayerException {
 
 		ResponseRequiredType oadrResponseRequired = event.getOadrResponseRequired();
+
 		boolean doNeedResponse = ResponseRequiredType.ALWAYS.equals(oadrResponseRequired);
 		if (!ResponseRequiredType.NEVER.equals(oadrResponseRequired) && doNeedResponse) {
 			String eventID = event.getEiEvent().getEventDescriptor().getEventID();
 			long modificationNumber = event.getEiEvent().getEventDescriptor().getModificationNumber();
-			return Optional.of(Oadr20bEiEventBuilders.newOadr20bCreatedEventEventResponseBuilder(eventID,
-					modificationNumber, requestId, responseCode, OptTypeType.OPT_IN).build());
+			try {
+			// check if the event has already  been opted in, if yes,  send opt out
+				if (optInEventsMap.get(eventID)!=null || isOut) {
+					multiVtnConfig.oadrCreateOpt(vtnConfiguration, new Oadr20bCreateOptBuilder(requestId, vtnConfiguration.getVenId(), System.currentTimeMillis(), eventID, modificationNumber, UUID.randomUUID().toString(), OptTypeType.OPT_OUT, OptReasonEnumeratedType.NOT_PARTICIPATING, null).withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value()).build());
+					optInEventsMap.remove(eventID);
+					return Optional.of(Oadr20bEiEventBuilders.newOadr20bCreatedEventEventResponseBuilder(eventID,
+							modificationNumber, requestId, responseCode, OptTypeType.OPT_OUT).build());
+
+				}else {
+					return Optional.of(Oadr20bEiEventBuilders.newOadr20bCreatedEventEventResponseBuilder(eventID,
+							modificationNumber, requestId, responseCode, OptTypeType.OPT_IN).build());
+				}
+			}catch (Exception  e){
+				LOGGER.error("Error while processing event", e);
+			}
+
 		}
 
 		return Optional.empty();
 	}
 
-	public OadrResponseType oadrDistributeEvent(VtnSessionConfiguration vtnConfiguration, OadrDistributeEventType event) {
+	public OadrResponseType oadrDistributeEvent(VtnSessionConfiguration vtnConfiguration, OadrDistributeEventType event,boolean isOut) {
 		String vtnRequestID = event.getRequestID();
 		int responseCode = HttpStatus.OK_200;
 		boolean hasError = false;
@@ -169,6 +181,9 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		if (!(vtnConfiguration.getVtnId().equals(event.getVtnID()))) {
 			responseCode = Oadr20bApplicationLayerErrorCode.INVALID_ID_452;
 			return getErrorResponseType(vtnConfiguration, responseCode, new ArrayList<EventResponse>(), vtnRequestID);
+		}
+		if (event.getOadrEvent().size()==0){
+			return null;
 		}
 
 		Set<String> validSignalNames = new HashSet<>();
@@ -182,7 +197,10 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		}
 
 		try {
-			//timeline.synchronizeOadrDistributeEvent(vtnConfiguration, event);
+			// for DER cases only push model needs to be synchronized
+			if (!vtnConfiguration.getPullModel()){
+				timeline.synchronizeOadrDistributeEvent(vtnConfiguration, event);
+			}
 			List<EventResponse> eventResponses = new ArrayList<>();
 
 			for (OadrEvent next : event.getOadrEvent()) {
@@ -202,11 +220,11 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 				}
 
 
-				Optional<EventResponse> processOadrEvent = processOadrEvent(vtnConfiguration, vtnRequestID,responseCode, next);
+				Optional<EventResponse> processOadrEvent = processOadrEvent(vtnConfiguration, vtnRequestID,responseCode, next,isOut);
 				processOadrEvent.ifPresent(eventResponses::add);
 
 				if (hasError) {
-					return getErrorResponseType(vtnConfiguration, HttpStatus.OK_200, eventResponses, vtnRequestID);
+					return getErrorResponseType(vtnConfiguration, responseCode, eventResponses, vtnRequestID);
 				}
 			}
 
@@ -241,18 +259,30 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 
 
 	private OadrResponseType getErrorResponseType(VtnSessionConfiguration vtnConfiguration, int responseCode, List<EventResponse> eventResponses, String vtnRequestID) {
-		OadrCreatedEventType build = Oadr20bEiEventBuilders.newCreatedEventBuilder(
-				Oadr20bResponseBuilders.newOadr20bEiResponseBuilder("", responseCode).build(),
-				vtnConfiguration.getVenId()).addEventResponse(eventResponses).build();
+		OadrCreatedEventType build=null;
+		if (responseCode==Oadr20bApplicationLayerErrorCode.INVALID_ID_452){
+			 build = Oadr20bEiEventBuilders.newCreatedEventBuilder(
+					Oadr20bResponseBuilders.newOadr20bEiResponseBuilder("", responseCode).build(),
+					vtnConfiguration.getVenId()).addEventResponse(eventResponses).build();
+		}else{
+			build = Oadr20bEiEventBuilders.newCreatedEventBuilder(
+					Oadr20bResponseBuilders.newOadr20bEiResponseBuilder("", HttpStatus.OK_200).build(),
+					vtnConfiguration.getVenId()).addEventResponse(eventResponses).build();
 
+		}
 			try {
 				multiVtnConfig.oadrCreatedEvent(vtnConfiguration, build);
 			} catch (Exception e) {
 				LOGGER.error("Can't send oadrCreatedEvent", e);
 			}
+			if (vtnConfiguration.getPullModel()){
+				return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
+						.build();
+			}else {
+				return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, responseCode, vtnConfiguration.getVenId())
+						.build();
+			}
 
-		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
-				.build();
 	}
 
 
@@ -271,7 +301,21 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		}
 		listeners.add(listener);
 	}
+	public Object outOptRequest(VtnSessionConfiguration multiConfig, Object unmarshal){
+		if (unmarshal instanceof OadrDistributeEventType) {
 
+			OadrDistributeEventType oadrDistributeEvent = (OadrDistributeEventType) unmarshal;
+
+			LOGGER.info(multiConfig.getVtnId() + " - OadrDistributeEventType");
+
+			return oadrDistributeEvent(multiConfig, oadrDistributeEvent,true);
+
+		}
+		return Oadr20bResponseBuilders
+				.newOadr20bResponseBuilder("0", Oadr20bApplicationLayerErrorCode.NOT_RECOGNIZED_453,
+						multiConfig.getVtnId())
+				.withDescription("Unknown payload type for service: " + this.getServiceName()).build();
+	}
 	public Object request(VtnSessionConfiguration multiConfig, Object unmarshal) {
 
 		if (unmarshal instanceof OadrDistributeEventType) {
@@ -280,7 +324,7 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 
 			LOGGER.info(multiConfig.getVtnId() + " - OadrDistributeEventType");
 
-            return oadrDistributeEvent(multiConfig, oadrDistributeEvent);
+            return oadrDistributeEvent(multiConfig, oadrDistributeEvent,false);
 
 		}
 

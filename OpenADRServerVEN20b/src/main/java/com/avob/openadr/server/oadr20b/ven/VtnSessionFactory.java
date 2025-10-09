@@ -56,6 +56,7 @@ public class VtnSessionFactory {
 	private static final String PORT = "oadr.vtn.server.port";
 	private static final String VEN_ID = "oadr.vtn.venid";
 
+
 	private static final String VEN_ID_FILE = "oadr.vtn.venid.file";
 	private static final String VEN_NAME = "oadr.vtn.venName";
 	private static final String VEN_URL = "oadr.vtn.venUrl";
@@ -153,7 +154,7 @@ public class VtnSessionFactory {
 				session.setXmlSignature(Boolean.valueOf(prop));
 			} else if (PULL_MODEL.equals(keyStr)) {
 				session.setPullModel(Boolean.valueOf(prop));
-			} else if (REPLAY_PROTECTION_DELAY.equals(keyStr)) {
+			}else if (REPLAY_PROTECTION_DELAY.equals(keyStr)) {
 				session.setReplayProtectAcceptedDelaySecond(Long.valueOf(prop));
 			} else if (VEN_REGISTER_REPORT_FILE.equals(keyStr)) {
 				OadrRegisterReportType registerReportFromFile = getRegisterReportFromFile(prop);

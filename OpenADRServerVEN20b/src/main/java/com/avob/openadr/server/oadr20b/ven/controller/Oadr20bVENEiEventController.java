@@ -40,7 +40,7 @@ public class Oadr20bVENEiEventController {
 			OadrSecurityException {
 		
 		String req = request.getScheme() + "://" + request.getServerName()+":"+request.getServerPort();
-		return oadr20bVENPayloadService.event(principal.getName(), req, payload);
+		return oadr20bVENPayloadService.event(principal.getName(), req, payload,false);
 	}
 
 }

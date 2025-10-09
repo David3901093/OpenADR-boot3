@@ -2,6 +2,7 @@ package com.avob.openadr.server.oadr20b.ven.service;
 
 import java.util.*;
 
+import com.avob.openadr.server.oadr20b.ven.ReportSpecifierStatus;
 import  jakarta.annotation.Resource;
 
 import org.eclipse.jetty.http.HttpStatus;
@@ -66,13 +67,7 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 	public void registerReport(VtnSessionConfiguration vtnConfiguration, String reportTypeRequestID) {
 
 		OadrRegisterReportType payload = multiVtnConfig.getVenRegisterReport(vtnConfiguration);
-		if (vtnConfiguration.getPullModel()){
-			payload.setReportRequestID("");
-		}else {
-			payload.setReportRequestID(reportTypeRequestID);
-		}
-
-
+		 payload.setReportRequestID(reportTypeRequestID);
         try {
 			multiVtnConfig.oadrRegisterReport(vtnConfiguration, payload);
 		} catch (XmppStringprepException | NotConnectedException | Oadr20bException | Oadr20bHttpLayerException
@@ -120,13 +115,17 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 
 	public OadrCreatedReportType oadrCreateReport(VtnSessionConfiguration vtnConfig,
 			OadrCreateReportType oadrCreateReportType,boolean isPiggyback) {
-
 		String requestID = oadrCreateReportType.getRequestID();
 		String reportTypeRequestID = null;
 
 		boolean sendSelfRegisterReport = false;
 		boolean sendUpdateReport = true;
 		try {
+			int CreatedReportCode = HttpStatus.OK_200;
+			if (vtnConfig.getPullModel()){
+				 CreatedReportCode = 0;
+			}
+
 			List<OadrReportRequestType> oadrReportRequest = oadrCreateReportType.getOadrReportRequest();
 			if (oadrReportRequest != null) {
 				for (OadrReportRequestType request : oadrReportRequest) {
@@ -134,20 +133,31 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 					ReportSpecifierType reportSpecifier = request.getReportSpecifier();
 					String reportSpecifierID = reportSpecifier.getReportSpecifierID();
 					if (METADATA_REPORT_SPECIFIER_ID.equals(reportSpecifierID)) {
+						int count = 0;
 						for (SpecifierPayloadType specifier : reportSpecifier.getSpecifierPayload()) {
 							String rid = specifier.getRID();
 							if (METADATA_REPORT_RID.equals(rid)) {
 								sendSelfRegisterReport = true;
-								reportTypeRequestID = reportRequestID;
+								if (count==0){
+									//the first one is the reportRequestID
+									reportTypeRequestID = reportRequestID;
+
+								}
 								addVenReportRequest(vtnConfig, request,reportRequestID);
+								count+=1;
 							}
 
 						}
 					} else {
-						sendUpdateReport = multiVtnConfig.checkReportSpecifier(vtnConfig, requestID, reportRequestID, reportSpecifier);
+						Integer res = multiVtnConfig.checkReportSpecifier(vtnConfig, requestID, reportRequestID, reportSpecifier);
+						sendUpdateReport = Objects.equals(res, ReportSpecifierStatus.OK);
 						addVenReportRequest(vtnConfig, request,reportRequestID);
 						if (!sendUpdateReport){
                             try {
+								if (res.equals(ReportSpecifierStatus.INVALID_REPORT_SPECIFIER_ID) || res.equals(ReportSpecifierStatus.INVALID_REPORT_DESCRIPTION_ID)){
+									isPiggyback=false;
+									CreatedReportCode = Oadr20bApplicationLayerErrorCode.INVALID_ID_452;
+								}
 								if(isPiggyback){
 
 									multiVtnConfig.oadrUpdateReport(vtnConfig, Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID,vtnConfig.getVenId()).buildDefaultUpdateReport(requestID,vtnConfig.getVenId(),reportRequestID,reportSpecifierID,reportSpecifier,resolveReportName(vtnConfig,reportSpecifierID)));
@@ -166,9 +176,15 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 				}
 
 			}
-
+			// if the report can piggyback,the reportRequestID comes from the createReport,else the reportRequestID is null.
 			if (sendSelfRegisterReport) {
-				this.registerReport(vtnConfig, reportTypeRequestID);
+				if (isPiggyback){
+					this.registerReport(vtnConfig, reportTypeRequestID);
+				}
+				else {
+					this.registerReport(vtnConfig, null);
+				}
+
 				LOGGER.info("Sending self register report");
 			}
 			if (sendUpdateReport){
@@ -178,7 +194,7 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 			}
 
 			OadrCreatedReportType oadrCreatedReportType= Oadr20bEiReportBuilders
-					.newOadr20bCreatedReportBuilder(requestID, HttpStatus.OK_200,
+					.newOadr20bCreatedReportBuilder(requestID, CreatedReportCode,
 							vtnConfig.getVenId())
 					.addPendingReportRequestId(getExistingVenReportRequest(vtnConfig))
 					.build();
@@ -224,7 +240,7 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 		if (reportToFollow) {
 			String newReportRequestID = "ReportReqID_" + System.currentTimeMillis();
 			pendingReports.add(newReportRequestID);
-			// add update report
+			// send update report
 			OadrUpdateReportType oadrUpdateReportType =  Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID, vtnConfig.getVenId()).build();
 			try {
 				multiVtnConfig.oadrUpdateReport(vtnConfig,oadrUpdateReportType);
@@ -236,13 +252,16 @@ public class Oadr20bVENEiReportService implements Oadr20bVENEiService {
 		venReportListeners.forEach(listener -> {
 			listener.onCancelReport(vtnConfig, oadrCancelReportType);
 		});
-		// add update report
-		OadrUpdateReportType oadrUpdateReportType =  Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID, vtnConfig.getVenId()).build();
-        try {
-            multiVtnConfig.oadrUpdateReport(vtnConfig,oadrUpdateReportType);
-        } catch (Exception e) {
-			LOGGER.error("Can't send update report", e);
+		if (vtnConfig.getPullModel()){
+			// send update report
+			OadrUpdateReportType oadrUpdateReportType =  Oadr20bEiReportBuilders.newOadr20bUpdateReportBuilder(requestID, vtnConfig.getVenId()).build();
+			try {
+				multiVtnConfig.oadrUpdateReport(vtnConfig,oadrUpdateReportType);
+			} catch (Exception e) {
+				LOGGER.error("Can't send update report", e);
+			}
 		}
+
         return Oadr20bEiReportBuilders
 				.newOadr20bCanceledReportBuilder(requestID, HttpStatus.OK_200,
 						vtnConfig.getVenId())

@@ -70,15 +70,20 @@ public class Oadr20bVENPayloadService {
 	@Resource
 	private MultiVtnConfig multiVtnConfig;
 
-	public String event(String vtnId, String venPushUrl, String payload) {
+	public String event(String vtnId, String venPushUrl, String payload,boolean isOptOut) {
 		VtnSessionConfiguration session = multiVtnConfig.getMultiConfig(vtnId, venPushUrl);
 		if (session == null) {
 			return vtnNotfoundError(vtnId);
 		}
 		try {
-
 			UnmarshalledPayload unsignedPayload = unmarshall(session, payload);
-			Object request = eventService.request(session, unsignedPayload.getPayload());
+			Object request =null;
+			if (!isOptOut){
+				 request = eventService.request(session, unsignedPayload.getPayload());
+			}else{
+				request = eventService.outOptRequest(session, unsignedPayload.getPayload());
+			}
+
 			if (request == null){
 				return null ;
 			}
@@ -226,7 +231,7 @@ public class Oadr20bVENPayloadService {
 				LOGGER.info("Retrieved OadrDistributeEventType");
 				OadrDistributeEventType val = (OadrDistributeEventType) payload;
 
-				OadrResponseType response = eventService.oadrDistributeEvent(session, val);
+				OadrResponseType response = eventService.oadrDistributeEvent(session, val,false);
 				responseService.oadrResponse(session, response);
 
 			} else if (payload instanceof OadrCancelPartyRegistrationType) {
@@ -273,7 +278,7 @@ public class Oadr20bVENPayloadService {
 				LOGGER.info("Retrieved OadrCreateReportType");
 				OadrCreateReportType val = (OadrCreateReportType) payload;
 
-				OadrCreatedReportType oadrCreateReport = reportService.oadrCreateReport(session, val, signed);
+				OadrCreatedReportType oadrCreateReport = reportService.oadrCreateReport(session, val, true);
 
 				OadrResponseType response = multiHttpClientConfig.oadrCreatedReport(oadrCreateReport);
 

@@ -33,7 +33,6 @@ public class Oadr20bVENEiOptService {
 	@Resource
 	private MultiVtnConfig multiVtnConfig;
 
-
 	public void oadrCancelOpt(VtnSessionConfiguration vtnConfig, OadrCancelOptType oadrCancelOptType) {
 
 		try {

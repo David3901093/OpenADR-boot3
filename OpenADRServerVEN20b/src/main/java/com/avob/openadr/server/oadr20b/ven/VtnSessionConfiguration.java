@@ -320,4 +320,5 @@ public class VtnSessionConfiguration {
 		this.sessionId = sessionId;
 	}
 
+
 }
