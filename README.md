@@ -22,7 +22,7 @@ DummyVTN20bController | Dummy OADR 2.0b VTN controller implementation acting DRP
 
 Tests certificates are required to test project or run demo:
 ```shell
-	./generate_test_cert.sh
+	./generate_certs_windows_git_bash
 ```
 
 This command will create several VTN / VEN / User / App certificates upon a self-signed generated authority. This authority has to be installed to disable insecure https warning when using VTN Control API / UI in a browser. VTN certificate uses the following Common Name, which need to be added to the local DNS configuration.
@@ -56,7 +56,6 @@ The VTN controller is notified by VTN using AMQP when VTN receive payload from V
 ### Endpoints
 
 - VTN Control Swagger UI: https://vtn.oadr.com:8181/testvtn/swagger-ui.html
-- VTN Control UI: https://vtn.oadr.com:8181/testvtn/
 - VTN RabbitMQ Management UI: http://localhost:15672
 - VTN Openfire Management UI: http://localhost:9090
 
