@@ -11,6 +11,7 @@
 */.recommenders
 .project
 .settings/
+.idea/
 
 # External tool builders
 .externalToolBuilders/
