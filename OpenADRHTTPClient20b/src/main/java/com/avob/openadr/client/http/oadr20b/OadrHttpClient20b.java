@@ -31,7 +31,6 @@ import com.avob.openadr.model.oadr20b.exception.Oadr20bUnmarshalException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureValidationException;
 import com.avob.openadr.model.oadr20b.oadr.OadrPayload;
-import com.avob.openadr.model.oadr20b.oadr.OadrSignedObject;
 import com.avob.openadr.model.oadr20b.xmlsignature.OadrXMLSignatureHandler;
 import com.avob.openadr.security.OadrPKISecurity;
 import com.avob.openadr.security.exception.OadrSecurityException;
