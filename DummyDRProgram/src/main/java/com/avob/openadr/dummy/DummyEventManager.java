@@ -8,6 +8,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.avob.server.oadrvtn20b.api.DemandResponseControllerApi;
+import com.avob.server.oadrvtn20b.api.MarketContextControllerApi;
+import com.avob.server.oadrvtn20b.handler.ApiException;
+import com.avob.server.oadrvtn20b.handler.ApiResponse;
+import com.avob.server.oadrvtn20b.model.DemandResponseEventCreateDto;
+import com.avob.server.oadrvtn20b.model.DemandResponseEventFilter;
+import com.avob.server.oadrvtn20b.model.DemandResponseEventReadDto;
+import com.avob.server.oadrvtn20b.model.VenMarketContextDto;
 import  jakarta.annotation.PostConstruct;
 import  jakarta.annotation.Resource;
 
@@ -17,15 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import com.avob.server.oadrvtn20b.api.DemandResponseControllerApi;
-import com.avob.server.oadrvtn20b.api.MarketContextControllerApi;
-import com.avob.server.oadrvtn20b.handler.ApiException;
-import com.avob.server.oadrvtn20b.handler.ApiResponse;
-import com.avob.server.oadrvtn20b.model.DemandResponseEventCreateDto;
-import com.avob.server.oadrvtn20b.model.DemandResponseEventFilter;
-import com.avob.server.oadrvtn20b.model.DemandResponseEventFilter.TypeEnum;
-import com.avob.server.oadrvtn20b.model.DemandResponseEventReadDto;
-import com.avob.server.oadrvtn20b.model.VenMarketContextDto;
+
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
@@ -100,7 +100,7 @@ public class DummyEventManager {
 
 		List<DemandResponseEventReadDto> events = new ArrayList<>();
 		DemandResponseEventFilter filter = new DemandResponseEventFilter();
-		filter.setType(TypeEnum.MARKET_CONTEXT);
+		filter.setType(DemandResponseEventFilter.TypeEnum.MARKET_CONTEXT);
 		filter.setValue(DummyVTN20bControllerConfig.MARKET_CONTEXT);
 
 		OffsetDateTime now = OffsetDateTime.now();
