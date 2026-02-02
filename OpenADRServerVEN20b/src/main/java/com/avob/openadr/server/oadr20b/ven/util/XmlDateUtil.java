@@ -5,12 +5,15 @@ import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import java.util.GregorianCalendar;
 import java.util.Date;
+import java.util.SimpleTimeZone;
+import java.util.TimeZone;
 
 public class XmlDateUtil {
 
     public static XMLGregorianCalendar nowXmlCalendar() {
         try {
             GregorianCalendar cal = new GregorianCalendar();
+            cal.setTimeZone((TimeZone.getTimeZone("UTC")));
             cal.setTime(new Date());
             return DatatypeFactory.newInstance().newXMLGregorianCalendar(cal);
         } catch (Exception e) {
