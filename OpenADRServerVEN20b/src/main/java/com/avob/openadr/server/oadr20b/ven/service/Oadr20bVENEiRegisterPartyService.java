@@ -218,20 +218,37 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 	// create a new registration
 	public void postRegistration(VtnSessionConfiguration vtnConfiguration) {
 		String requestId = java.util.UUID.randomUUID().toString();
-
+		OadrCreatePartyRegistrationType createPartyRegistration=null;
 		try {
-			OadrCreatePartyRegistrationType createPartyRegistration = Oadr20bEiRegisterPartyBuilders
-					.newOadr20bCreatePartyRegistrationBuilder(requestId,
-							vtnConfiguration.getVenId(),
-							SchemaVersionEnumeratedType.OADR_20B.value())
-					.withOadrTransportName(OadrTransportType.SIMPLE_HTTP)
-					.withOadrTransportAddress(vtnConfiguration.getVenUrl())
-					.withOadrReportOnly(vtnConfiguration.getReportOnly())
-					.withOadrVenName(vtnConfiguration.getVenName())
-					.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
-					.withOadrHttpPullModel(vtnConfiguration.getPullModel())
-					.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
-					.build();
+			if (vtnConfiguration.getVenRegistrationId()!= null){
+				createPartyRegistration = Oadr20bEiRegisterPartyBuilders
+						.newOadr20bCreatePartyRegistrationBuilder(requestId,
+								vtnConfiguration.getVenId(),
+								SchemaVersionEnumeratedType.OADR_20B.value())
+						.withOadrTransportName(OadrTransportType.SIMPLE_HTTP)
+						.withOadrTransportAddress(vtnConfiguration.getVenUrl())
+						.withOadrReportOnly(vtnConfiguration.getReportOnly())
+						.withOadrVenName(vtnConfiguration.getVenName())
+						.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
+						.withRegistrationId(vtnConfiguration.getVenRegistrationId())
+						.withOadrHttpPullModel(vtnConfiguration.getPullModel())
+						.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
+						.build();
+			}else {
+				 createPartyRegistration = Oadr20bEiRegisterPartyBuilders
+						.newOadr20bCreatePartyRegistrationBuilder(requestId,
+								vtnConfiguration.getVenId(),
+								SchemaVersionEnumeratedType.OADR_20B.value())
+						.withOadrTransportName(OadrTransportType.SIMPLE_HTTP)
+						.withOadrTransportAddress(vtnConfiguration.getVenUrl())
+						.withOadrReportOnly(vtnConfiguration.getReportOnly())
+						.withOadrVenName(vtnConfiguration.getVenName())
+						.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
+						.withOadrHttpPullModel(vtnConfiguration.getPullModel())
+						.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
+						.build();
+			}
+
 			if (vtnConfiguration.getVtnUrl() != null) {
 				OadrCreatedPartyRegistrationType oadrCreatedPartyRegistrationType = multiVtnConfig.getMultiHttpClientConfig(vtnConfiguration)
 						.oadrCreatePartyRegistration(createPartyRegistration);
@@ -384,6 +401,58 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 		}
 	}
 
+	private OadrResponseType handleQueryRegistration(VtnSessionConfiguration vtnConfig,
+													 OadrQueryRegistrationType queryRegistration) {
+		LOGGER.info("{} - Received OadrQueryRegistrationType. Responding with OadrCreatePartyRegistration.", vtnConfig.getVtnId());
+
+		String requestId = UUID.randomUUID().toString(); // Generate a new request ID for CreatePartyRegistration
+		String existingRegistrationId = vtnConfig.getVenRegistrationId(); // Get stored registration ID
+
+		// Build the CreatePartyRegistration message
+		OadrCreatePartyRegistrationType createPartyRegistration = Oadr20bEiRegisterPartyBuilders
+				.newOadr20bCreatePartyRegistrationBuilder(requestId, vtnConfig.getVenId(),SchemaVersionEnumeratedType.OADR_20B.value()).build();
+
+		if (existingRegistrationId != null && !existingRegistrationId.isEmpty()) {
+			createPartyRegistration = Oadr20bEiRegisterPartyBuilders
+					.newOadr20bCreatePartyRegistrationBuilder(requestId, vtnConfig.getVenId(),SchemaVersionEnumeratedType.OADR_20B.value()).withRegistrationId(existingRegistrationId).build();
+			LOGGER.debug("Including existing registration ID '{}' for re-registration.", existingRegistrationId);
+		} else {
+			LOGGER.debug("No existing registration ID found, sending for initial registration.");
+		}
+
+		OadrCreatePartyRegistrationType builtCreatePartyReg =createPartyRegistration;
+
+		try {
+			// Send the CreatePartyRegistration via HTTP client
+			if (vtnConfig.getVtnUrl() != null) {
+				OadrCreatedPartyRegistrationType oadrCreatedPartyRegistrationType = multiVtnConfig
+						.getMultiHttpClientConfig(vtnConfig)
+						.oadrCreatePartyRegistration(builtCreatePartyReg);
+				// Process the response from the VTN after sending CreatePartyRegistration
+				this.oadrCreatedPartyRegistration(vtnConfig, oadrCreatedPartyRegistrationType);
+			} else {
+				// If using XMPP, send via XMPP client
+				multiVtnConfig.getMultiXmppClientConfig(vtnConfig)
+						.oadrCreatePartyRegistration(builtCreatePartyReg);
+			}
+		} catch (Oadr20bException | Oadr20bHttpLayerException | Oadr20bXMLSignatureException |
+				 Oadr20bXMLSignatureValidationException | Oadr20bMarshalException | IOException |
+				 NotConnectedException | OadrSecurityException e) {
+			LOGGER.error("Failed to send OadrCreatePartyRegistration in response to QueryRegistration", e);
+			// Depending on error handling strategy, you might want to return an error response here
+			// For now, just log the error. The VTN might retry QueryRegistration.
+		} catch (InterruptedException e) {
+			LOGGER.error("Thread interrupted while sending OadrCreatePartyRegistration", e);
+			Thread.currentThread().interrupt();
+		}
+
+		// Return a successful response to acknowledge the QueryRegistration receipt
+		// The actual registration happens asynchronously via the CreatePartyRegistration sent above
+		String responseRequestId = queryRegistration.getRequestID(); // Use the original request ID for the response
+		String venID = vtnConfig.getVenId();
+		int responseCode = HttpStatus.OK_200;
+		return Oadr20bResponseBuilders.newOadr20bResponseBuilder(responseRequestId, responseCode, venID).build();
+	}
 
 	public Object request(VtnSessionConfiguration vtnConfig, Object unmarshal) {
 		if (unmarshal instanceof OadrPayload) {
@@ -416,7 +485,11 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 
 			return null;
 
-		}
+		}else  if (unmarshal instanceof OadrQueryRegistrationType) {
+			 OadrQueryRegistrationType queryReg = (OadrQueryRegistrationType) unmarshal;
+			 return handleQueryRegistration(vtnConfig, queryReg);
+
+		 }
 
 		return Oadr20bResponseBuilders
 				.newOadr20bResponseBuilder("0", Oadr20bApplicationLayerErrorCode.NOT_RECOGNIZED_453,
