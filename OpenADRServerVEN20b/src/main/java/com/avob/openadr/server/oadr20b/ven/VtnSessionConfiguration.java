@@ -41,6 +41,13 @@ public class VtnSessionConfiguration {
 	private Long replayProtectAcceptedDelaySecond;
 	private SSLContext sslContext;
 	private Map<String, OadrReportType> venRegisterReport;
+	private String tempVenPrivateKeyPath;
+	private String tempVenCertificatePath;
+
+	public String getTempVenPrivateKeyPath() { return tempVenPrivateKeyPath; }
+	public void setTempVenPrivateKeyPath(String tempVenPrivateKeyPath) { this.tempVenPrivateKeyPath = tempVenPrivateKeyPath; }
+	public String getTempVenCertificatePath() { return tempVenCertificatePath; }
+	public void setTempVenCertificatePath(String tempVenCertificatePath) { this.tempVenCertificatePath = tempVenCertificatePath; }
 
 	public String getVenRegistrationId() {
 		return venRegistrationId;
@@ -279,6 +286,7 @@ public class VtnSessionConfiguration {
 	public Long getReplayProtectAcceptedDelaySecond() {
 		return replayProtectAcceptedDelaySecond;
 	}
+
 
 	public void setReplayProtectAcceptedDelaySecond(Long replayProtectAcceptedDelaySecond) {
 		this.replayProtectAcceptedDelaySecond = replayProtectAcceptedDelaySecond;

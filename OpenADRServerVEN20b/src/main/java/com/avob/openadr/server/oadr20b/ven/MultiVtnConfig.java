@@ -1,38 +1,21 @@
 package com.avob.openadr.server.oadr20b.ven;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import com.avob.openadr.server.oadr20b.ven.util.XmlDateUtil;
-import  jakarta.annotation.PostConstruct;
-import  jakarta.annotation.Resource;
-import javax.net.ssl.SSLContext;
-import javax.xml.datatype.XMLGregorianCalendar;
-
-import jakarta.xml.bind.JAXBException;
-
-import org.eclipse.jetty.http.HttpStatus;
-import org.jivesoftware.smack.SmackException.NotConnectedException;
-import org.jxmpp.stringprep.XmppStringprepException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Configuration;
-
-import org.springframework.core.env.AbstractEnvironment;
-import org.springframework.core.env.EnumerablePropertySource;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.MutablePropertySources;
 
 import com.avob.openadr.client.http.OadrHttpClientBuilder;
 import com.avob.openadr.client.http.oadr20b.OadrHttpClient20b;
@@ -47,29 +30,40 @@ import com.avob.openadr.model.oadr20b.builders.Oadr20bEiReportBuilders;
 import com.avob.openadr.model.oadr20b.builders.eireport.Oadr20bRegisterReportBuilder;
 import com.avob.openadr.model.oadr20b.ei.ReportSpecifierType;
 import com.avob.openadr.model.oadr20b.ei.SpecifierPayloadType;
-import com.avob.openadr.model.oadr20b.oadr.OadrResponseType;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bHttpLayerException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bMarshalException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureValidationException;
-import com.avob.openadr.model.oadr20b.oadr.OadrCancelOptType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreateOptType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreateReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreatedReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreatedEventType;
-import com.avob.openadr.model.oadr20b.oadr.OadrRegisterReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrReportDescriptionType;
-import com.avob.openadr.model.oadr20b.oadr.OadrReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrSamplingRateType;
-import com.avob.openadr.model.oadr20b.oadr.OadrUpdateReportType;
-import com.avob.openadr.model.oadr20b.oadr.OadrRequestEventType;
+import com.avob.openadr.model.oadr20b.oadr.*;
 import com.avob.openadr.model.oadr20b.xcal.DurationPropType;
 import com.avob.openadr.security.OadrPKISecurity;
 import com.avob.openadr.security.exception.OadrSecurityException;
 import com.avob.openadr.server.oadr20b.ven.exception.Oadr20bInvalidReportRequestException;
 import com.avob.openadr.server.oadr20b.ven.exception.OadrVTNInitializationException;
+import com.avob.openadr.server.oadr20b.ven.util.XmlDateUtil;
 import com.avob.openadr.server.oadr20b.ven.xmpp.XmppVenListener;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
+import javax.net.ssl.SSLContext;
+
+import jakarta.xml.bind.JAXBException;
+
+
+import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jxmpp.stringprep.XmppStringprepException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.core.env.AbstractEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.MutablePropertySources;
 
 @Configuration
 public class MultiVtnConfig {
@@ -95,14 +89,25 @@ public class MultiVtnConfig {
 
 	private List<String> knownVtnId = new ArrayList<>();
 
+	// Store temporary PEM files to clean them up later
+	private final Map<String, List<Path>> tempFilesMap = new ConcurrentHashMap<>();
 
 	private void configureClient(VtnSessionConfiguration session)
 			throws OadrSecurityException, JAXBException, OadrVTNInitializationException {
 
+		// If JKS extraction was used, the session object now contains paths to temporary PEM files.
+		// Use these paths for client configuration instead of original ones.
+		String privateKeyPathForClient = session.getTempVenPrivateKeyPath() != null ?
+				session.getTempVenPrivateKeyPath() :
+				session.getVenPrivateKeyPath();
+		String certificatePathForClient = session.getTempVenCertificatePath() != null ?
+				session.getTempVenCertificatePath() :
+				session.getVenCertificatePath();
+
 		if (session.getVtnXmppHost() != null && session.getVtnXmppPort() != null) {
-			configureXMPPClient(session);
+			configureXMPPClient(session, privateKeyPathForClient, certificatePathForClient);
 		} else if (session.getVtnUrl() != null) {
-			configureHTTPClient(session);
+			configureHTTPClient(session, privateKeyPathForClient, certificatePathForClient);
 		} else {
 			throw new IllegalStateException(String.format(
 					"Invalid config: %s - vtnUrl must be defined for HTTP ven, xmppHost and xmppPort for XMPP ven",
@@ -110,7 +115,7 @@ public class MultiVtnConfig {
 		}
 	}
 
-	private void configureHTTPClient(VtnSessionConfiguration session)
+	private void configureHTTPClient(VtnSessionConfiguration session, String privateKeyPath, String certificatePath)
 			throws OadrSecurityException, JAXBException, OadrVTNInitializationException {
 		LOGGER.info("Init HTTP VEN client");
 		OadrHttpClientBuilder builder = new OadrHttpClientBuilder().withDefaultHost(session.getVtnUrl())
@@ -127,13 +132,15 @@ public class MultiVtnConfig {
 					session.getDigestUsername(), session.getDigestPassword());
 
 		} else {
-			builder.withX509Authentication(session.getVenPrivateKeyPath(), session.getVenCertificatePath());
+			// Use the potentially temporary paths from JKS extraction
+			builder.withX509Authentication(privateKeyPath, certificatePath);
 		}
 
 		OadrHttpVenClient20b client = null;
 		if (session.getXmlSignature()) {
-			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build(), session.getVenPrivateKeyPath(),
-					session.getVenCertificatePath(), session.getReplayProtectAcceptedDelaySecond()));
+			// Use the potentially temporary paths from JKS extraction
+			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build(), privateKeyPath,
+					certificatePath, session.getReplayProtectAcceptedDelaySecond()));
 		} else {
 			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build()));
 		}
@@ -141,14 +148,15 @@ public class MultiVtnConfig {
 		putMultiHttpClientConfig(session, client);
 	}
 
-	private void configureXMPPClient(VtnSessionConfiguration session)
+	private void configureXMPPClient(VtnSessionConfiguration session, String privateKeyPath, String certificatePath)
 			throws OadrSecurityException, JAXBException, OadrVTNInitializationException {
 		try {
 
 			LOGGER.info("Init XMPP VEN client");
 			String password = UUID.randomUUID().toString();
-			SSLContext sslContext = OadrPKISecurity.createSSLContext(session.getVenPrivateKeyPath(),
-					session.getVenCertificatePath(), session.getTrustCertificates(), password);
+			// Use the potentially temporary paths from JKS extraction
+			SSLContext sslContext = OadrPKISecurity.createSSLContext(privateKeyPath,
+					certificatePath, session.getTrustCertificates(), password);
 
 			OadrXmppClient20bBuilder builder = new OadrXmppClient20bBuilder()
 					.withHostAndPort(session.getVtnXmppHost(), session.getVtnXmppPort()).withVenID(session.getVenId())
@@ -166,8 +174,9 @@ public class MultiVtnConfig {
 
 			OadrXmppVenClient20b venClient = null;
 			if (session.getXmlSignature()) {
-				venClient = new OadrXmppVenClient20b(oadrXmppClient20b, session.getVenPrivateKeyPath(),
-						session.getVenCertificatePath(), session.getReplayProtectAcceptedDelaySecond());
+				// Use the potentially temporary paths from JKS extraction
+				venClient = new OadrXmppVenClient20b(oadrXmppClient20b, privateKeyPath,
+						certificatePath, session.getReplayProtectAcceptedDelaySecond());
 			} else {
 				venClient = new OadrXmppVenClient20b(oadrXmppClient20b);
 			}
@@ -180,6 +189,7 @@ public class MultiVtnConfig {
 			throw new OadrVTNInitializationException(e);
 		}
 	}
+
 
 	@SuppressWarnings("rawtypes")
 	private Map<String, Properties> loadVtnConf() {
@@ -213,41 +223,60 @@ public class MultiVtnConfig {
 	public void init() {
 		Map<String, Properties> loadVtnConf = loadVtnConf();
 		for (Entry<String, Properties> entry : loadVtnConf.entrySet()) {
+			String vtnConfigName = entry.getKey();
+			Properties vtnProps = entry.getValue();
 
 			try {
-				VtnSessionConfiguration session = vtnSessionFactory.createVtnSession(entry.getKey(), entry.getValue());
-				LOGGER.debug("Valid vtn configuration: " + entry.getKey());
+				VtnSessionConfiguration session = vtnSessionFactory.createVtnSession(vtnConfigName, vtnProps,tempFilesMap);
+				LOGGER.debug("Valid vtn configuration: " + vtnConfigName);
 				LOGGER.info(session.toString());
+
+
+
 				configureClient(session);
 				multiConfig.put(getSessionKey(session.getVtnId(), session.getVenUrl()), session);
-
 				knownVtnId.add(session.getVtnId());
 
-
 				if (session.getVenRegisterReport() != null) {
-
 					Map<String, OadrReportType> map = new HashMap<>();
 					session.getVenRegisterReport().values().forEach(report -> {
 						map.put(report.getReportSpecifierID(), report);
 					});
 					reports.put(getSessionKey(session.getVtnId(), session.getVenUrl()), map);
-
 				}
 
 			} catch (OadrSecurityException e) {
-				LOGGER.error("Dynamic Vtn conf key: " + entry.getKey() + " is not a valid vtn configuration", e);
+				LOGGER.error("Dynamic Vtn conf key: " + vtnConfigName + " is not a valid vtn configuration", e);
 			} catch (JAXBException e) {
-				LOGGER.error("Dynamic Vtn conf key: " + entry.getKey() + " is not a valid vtn configuration", e);
+				LOGGER.error("Dynamic Vtn conf key: " + vtnConfigName + " is not a valid vtn configuration", e);
 			} catch (OadrVTNInitializationException e) {
-				LOGGER.error("Dynamic Vtn conf key: " + entry.getKey() + " is not a valid vtn configuration", e);
+				LOGGER.error("Dynamic Vtn conf key: " + vtnConfigName + " is not a valid vtn configuration", e);
+			} catch (Exception e) {
+				LOGGER.error("Failed to initialize VTN configuration: " + vtnConfigName, e);
 			}
 		}
 
 		if (multiConfig.isEmpty()) {
 			throw new IllegalArgumentException("No Vtn configuration has been found");
 		}
-
 	}
+	// Cleanup method to delete temporary PEM files when the application shuts down
+	@PreDestroy
+	public void destroy() {
+		for (List<Path> tempFiles : tempFilesMap.values()) {
+			for (Path filePath : tempFiles) {
+				try {
+					Files.deleteIfExists(filePath);
+					LOGGER.debug("Deleted temporary file: {}", filePath);
+				} catch (IOException e) {
+					LOGGER.warn("Failed to delete temporary file: {}", filePath, e);
+				}
+			}
+		}
+		tempFilesMap.clear();
+	}
+
+
 	public String getVtnId() {
 		return knownVtnId.stream().findFirst().orElse(null);
 	}
@@ -262,7 +291,7 @@ public class MultiVtnConfig {
 	}
 
 	public Integer checkReportSpecifier(VtnSessionConfiguration vtnConfig, String requestId, String reportRequestId,
-			ReportSpecifierType reportSpecifier) throws Oadr20bInvalidReportRequestException {
+										ReportSpecifierType reportSpecifier) throws Oadr20bInvalidReportRequestException {
 		int valid=ReportSpecifierStatus.OK;
 		// check report specifier
 		String reportSpecifierID = reportSpecifier.getReportSpecifierID();

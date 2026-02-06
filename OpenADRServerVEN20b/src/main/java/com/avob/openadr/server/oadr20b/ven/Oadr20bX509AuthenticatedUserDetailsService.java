@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import com.avob.openadr.security.OadrFingerprintSecurity;
 import com.avob.openadr.security.exception.OadrSecurityException;
+import org.springframework.util.StringUtils;
 
 /**
  * x509 oadr fingerprint mechanism demonstration
@@ -43,7 +44,10 @@ public class Oadr20bX509AuthenticatedUserDetailsService
 		String fingerprint = "";
 		try {
 			fingerprint = OadrFingerprintSecurity.getOadr20bFingerprint(certificate);
-			if (WHITE_LIST.contains(fingerprint)) {
+			//if (WHITE_LIST.contains(fingerprint)) {
+			//	return new User(fingerprint, "",VTN_AUTHORITY );
+			//}
+			if (!fingerprint.trim().isEmpty()) {
 				return new User(fingerprint, "",VTN_AUTHORITY );
 			}
 		} catch (OadrSecurityException e) {
@@ -55,14 +59,21 @@ public class Oadr20bX509AuthenticatedUserDetailsService
 		}
 
 		LOGGER.warn("Undefined VTN communication received - fingerprint: " + fingerprint);
-		throw new UsernameNotFoundException("");
+		throw new UsernameNotFoundException("VTN with fingerprint '" + fingerprint + "' is not registered");
 
 	}
 
 
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		if (WHITE_LIST.contains(username)) {
+		//if (WHITE_LIST.contains(username)) {
+		//	username =multiConfig.getVtnId();
+		//	if (username!=null){
+		//		return new User(username, "", VTN_AUTHORITY);
+		//	}
+		//
+		//}
+		if (!WHITE_LIST.contains(username)) {
 			username =multiConfig.getVtnId();
 			if (username!=null){
 				return new User(username, "", VTN_AUTHORITY);

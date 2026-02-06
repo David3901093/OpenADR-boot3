@@ -24,6 +24,7 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.auth.DigestScheme;
@@ -226,8 +227,11 @@ public class OadrHttpClientBuilder {
 		String password = UUID.randomUUID().toString();
 		SSLContext sc = OadrPKISecurity.createSSLContext(clientPrivateKeyPemFilePath, clientCertificatePemFilePath,
 				this.trustedCertificateFilePath, password);
+		//SSLConnectionSocketFactory createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
+		//		SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+		// For testing purpose we should forbid hostname verification
 		SSLConnectionSocketFactory createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
-				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+				NoopHostnameVerifier.INSTANCE);
 
 		RegistryBuilder<ConnectionSocketFactory> register = RegistryBuilder.<ConnectionSocketFactory>create()
 				.register("https", createSSLSocketFactory);

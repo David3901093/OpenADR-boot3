@@ -284,7 +284,22 @@
 	<ei:optID>Opt_1234</ei:optID>
 	<ei:optType>optIn</ei:optType>
 	<ei:optReason>participating</ei:optReason>
+	<emix:marketContext>http://MarketContext1</emix:marketContext>
 	<ei:venID>f3427ed82251c2bb5e54</ei:venID>
+	<xcal:vavailability>
+		<xcal:components>
+			<xcal:available>
+				<xcal:properties>
+					<xcal:dtstart>
+						<xcal:date-time>2025-09-26T06:51:27.346Z</xcal:date-time>
+					</xcal:dtstart>
+					<xcal:duration>
+						<xcal:duration>PT24H</xcal:duration>
+					</xcal:duration>
+				</xcal:properties>
+			</xcal:available>
+		</xcal:components>
+	</xcal:vavailability>
 	<ei:createdDateTime>2025-09-26T06:51:27.346Z</ei:createdDateTime>
 	<pyld:requestID>0</pyld:requestID>
 	<ei:eiTarget>
