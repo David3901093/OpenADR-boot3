@@ -230,9 +230,6 @@ public class MultiVtnConfig {
 				VtnSessionConfiguration session = vtnSessionFactory.createVtnSession(vtnConfigName, vtnProps,tempFilesMap);
 				LOGGER.debug("Valid vtn configuration: " + vtnConfigName);
 				LOGGER.info(session.toString());
-
-
-
 				configureClient(session);
 				multiConfig.put(getSessionKey(session.getVtnId(), session.getVenUrl()), session);
 				knownVtnId.add(session.getVtnId());
