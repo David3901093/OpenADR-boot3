@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,12 +15,24 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.avob.openadr.client.http.OadrHttpClient;
+import com.avob.openadr.client.http.OadrHttpClientBuilder;
+import com.avob.openadr.client.http.oadr20b.ResponseUtils;
+import com.avob.openadr.server.oadr20b.ven.util.JsonParserUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.annotation.Resource;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.utils.HttpClientUtils;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,6 +85,7 @@ public class VtnSessionFactory {
     private static final String VEN_REGISTER_REPORT_FILE = "oadr.vtn.venRegisterReport.file";
 
     private static final String USE_JKS_EXTRACTION = "oadr.vtn.security.use_jks_extraction";
+
 
 
     @Resource
@@ -162,9 +176,21 @@ public class VtnSessionFactory {
                 session.setReplayProtectAcceptedDelaySecond(Long.valueOf(prop));
             } else if (VEN_REGISTER_REPORT_FILE.equals(keyStr)) {
                 OadrRegisterReportType registerReportFromFile = getRegisterReportFromFile(prop);
-                session.setVenRegisterReport(registerReportFromFile.getOadrReport().stream()
-                        .collect(Collectors.toMap((OadrReportType r) -> r.getReportSpecifierID(), r -> r)));
-            } else if (USE_JKS_EXTRACTION.equals(keyStr)) {
+                Map<String, OadrReportType> mergedReportMap = new HashMap<>();
+
+                for (OadrReportType report : registerReportFromFile.getOadrReport()) {
+                    String specId = report.getReportSpecifierID();
+                    if (mergedReportMap.containsKey(specId)) {
+                        // merge the reportDescription with the same reportSpecifierID but defferent reportDescription
+                        mergedReportMap.get(specId).getOadrReportDescription().addAll(report.getOadrReportDescription());
+                    } else {
+                        // add the report
+                        mergedReportMap.put(specId, report);
+                    }
+                }
+                session.setVenRegisterReport(mergedReportMap);
+            }
+            else if (USE_JKS_EXTRACTION.equals(keyStr)) {
 
                 String jksPathKey = "oadr.vtn." + "security.keystore.path";
                 String jksPasswordKey = "oadr.vtn." + "security.keystore.password";
@@ -191,12 +217,8 @@ public class VtnSessionFactory {
 
                     session.setVenPrivateKeyPath(extractedPrivateKeyPath);
                     session.setVenCertificatePath(extractedCertificatePath);
-
-
                     session.setTempVenPrivateKeyPath(extractedPrivateKeyPath);
                     session.setTempVenCertificatePath(extractedCertificatePath);
-                    session.setVenCertificatePath(extractedCertificatePath);
-                    session.setVenPrivateKeyPath(extractedPrivateKeyPath);
 
 
                     List<Path> tempFiles = new ArrayList<>();
@@ -255,10 +277,7 @@ public class VtnSessionFactory {
                     throw new RuntimeException(ex);
                 }
             }
-
-
         }
-
         String password = UUID.randomUUID().toString();
         TrustManagerFactory trustManagerFactory;
         try {
@@ -387,27 +406,26 @@ public class VtnSessionFactory {
     private List<String> extractTrustCertificatesFromJKS(String truststorePath, String truststorePassword) throws Exception {
         List<String> certificatePaths = new ArrayList<>();
 
-        // 加载 truststore
+        // load truststore
         KeyStore trustStore = KeyStore.getInstance("JKS");
         try (FileInputStream fis = new FileInputStream(truststorePath)) {
             trustStore.load(fis, truststorePassword.toCharArray());
         }
 
-        // 遍历所有别名
         Enumeration<String> aliases = trustStore.aliases();
         while (aliases.hasMoreElements()) {
             String alias = aliases.nextElement();
 
-            // 检查是否为证书条目
+            // check certificate
             if (trustStore.isCertificateEntry(alias)) {
                 Certificate cert = trustStore.getCertificate(alias);
                 if (cert instanceof X509Certificate) {
                     X509Certificate x509Cert = (X509Certificate) cert;
 
-                    // 创建临时文件存储证书
+                    // create temporary file
                     Path tempCertFile = Files.createTempFile("trust_cert_" + alias + "_", ".crt");
 
-                    // 写入 PEM 格式的证书内容
+                    // write certificate to temporary file in PEM format
                     String encodedCert = Base64.getEncoder().encodeToString(x509Cert.getEncoded());
                     try (PrintWriter writer = new PrintWriter(tempCertFile.toFile())) {
                         writer.println("-----BEGIN CERTIFICATE-----");
@@ -417,7 +435,7 @@ public class VtnSessionFactory {
                         writer.println("-----END CERTIFICATE-----");
                     }
 
-                    // 添加文件路径到列表
+                    // add certificate path to list
                     certificatePaths.add(tempCertFile.toString());
                 }
             }

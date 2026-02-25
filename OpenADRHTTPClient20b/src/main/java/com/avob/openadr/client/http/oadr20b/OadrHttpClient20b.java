@@ -13,6 +13,7 @@ import jakarta.xml.bind.JAXBException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpPost;
@@ -148,15 +149,20 @@ public class OadrHttpClient20b {
 			} else {
 				marshal = jaxbContext.marshal(payload, validateXmlPayload);
 			}
-
+			log.info("POST " + host + Oadr20bUrlPath.OADR_BASE_PATH + path);
+			log.info(marshal);
 			StringEntity stringEntity = new StringEntity(marshal);
 			post.setEntity(stringEntity);
 			HttpResponse response = client.execute(post, host, Oadr20bUrlPath.OADR_BASE_PATH + path, context);
 
+
 			// if request did not result in 200 http code throw exception
 			int statusCode = response.getStatusLine().getStatusCode();
+			log.info("RESPONSE CODE " + statusCode);
 			if (statusCode != HttpStatus.SC_OK) {
-				EntityUtils.consumeQuietly(response.getEntity());
+				HttpEntity entity = response.getEntity();
+				EntityUtils.consumeQuietly(entity);
+				log.error("ERROR " + EntityUtils.toString(entity));
 				throw new Oadr20bHttpLayerException(statusCode,
 						String.valueOf(statusCode));
 			}
@@ -164,6 +170,8 @@ public class OadrHttpClient20b {
 			// if request was a success, validate xml signature if required and then
 			// unmarshall response
 			String entity = EntityUtils.toString(response.getEntity(), "UTF-8");
+			log.info("RESPONSE BODY ");
+			log.info(entity);
 			if (isXmlSignatureEnabled()) {
 				ResponseUtils.setResString(entity);
 				OadrPayload unmarshal = jaxbContext.unmarshal(entity, OadrPayload.class, validateXmlPayload);

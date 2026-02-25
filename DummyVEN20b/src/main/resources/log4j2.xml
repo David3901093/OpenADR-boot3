@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="INFO">
     <Appenders>
-
+        <!-- Console output -->
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
 
+        <!-- In-memory log appender (keep original) -->
         <InMemoryLogAppender name="InMemoryLogAppender">
             <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
         </InMemoryLogAppender>
+
+        <!-- Rolling file appender: logs to ./logs/ directory -->
+        <RollingFile name="RollingFileAppender"
+                     fileName="./logs/ven.log"
+                     filePattern="./logs/ven-%d{yyyy-MM-dd-HH-mm-ss}.%i.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <!-- Trigger rollover when log file exceeds 10 MB -->
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <!-- Allow up to 10 rollover files (indexed by %i) -->
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
     </Appenders>
+
     <Loggers>
         <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="InMemoryLogAppender"/>
+            <AppenderRef ref="RollingFileAppender"/> <!-- Enable file logging -->
         </Root>
     </Loggers>
 </Configuration>

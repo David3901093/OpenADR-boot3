@@ -172,7 +172,7 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 	public void reinitRegistration(VtnSessionConfiguration vtnConfiguration) {
 		clearRegistration(vtnConfiguration);
 		oadrPollService.cancelPoll(vtnConfiguration, true);
-		this.initRegistration(vtnConfiguration);
+		this.postRegistration(vtnConfiguration);
 	}
 	//  init  registration with query
 	public void initRegistration(VtnSessionConfiguration vtnConfiguration) {

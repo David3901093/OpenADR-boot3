@@ -24,14 +24,18 @@ import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
 import com.avob.openadr.server.oadr20b.ven.service.Oadr20bVENEiReportService;
 import com.avob.openadr.server.oadr20b.ven.service.UpdateReportOrchestratorService;
+import com.avob.openadr.server.oadr20b.ven.util.JsonParserUtil;
 import jakarta.annotation.Resource;
 
 
 import jakarta.xml.bind.JAXBException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.http.HttpStatus;
 import org.jivesoftware.smack.SmackException;
 import org.jxmpp.stringprep.XmppStringprepException;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -52,10 +56,10 @@ public class ReportController {
     @Resource
     private Oadr20bVENEiReportService oadr20bVENEiReportService;
 
-
     @Resource
     private MultiVtnConfig multiVtnConfig;
 
+    private static final Logger log = LogManager.getLogger(ReportController.class);
 
   @Resource
   private UpdateReportOrchestratorService updateReportOrchestratorService;
@@ -67,7 +71,12 @@ public class ReportController {
             String preload = loadConfig(vtnConfig);
             oadr20bVENEiReportService.oadrCreatedReport(
                     vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload, OadrCreatedReportType.class));
-            return ResponseUtils.getResString();
+            String resString = ResponseUtils.getResString();
+            OadrPayload oadrPayload = XmlParserUtil.parseOadrXml(resString, OadrPayload.class);
+            String jsonString = JsonParserUtil.toPrettyJsonString(oadrPayload);
+            log.info("createdReport response:{}", jsonString);
+            multiVtnConfig.putResponseData(vtnSessionConfiguration.getVenId(), "createdReport", jsonString);
+            return resString;
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }
@@ -80,7 +89,12 @@ public class ReportController {
         try {
            loadConfig(vtnConfig);
             sendMetaData();
-            return ResponseUtils.getResString();
+            String resString = ResponseUtils.getResString();
+            OadrPayload oadrPayload = XmlParserUtil.parseOadrXml(resString, OadrPayload.class);
+            String jsonString = JsonParserUtil.toPrettyJsonString(oadrPayload);
+            log.info("sendMetaDataReport response:{}", jsonString);
+            multiVtnConfig.putResponseData(vtnSessionConfiguration.getVenId(), "sendMetaDataReport", jsonString);
+            return resString;
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }
@@ -112,7 +126,12 @@ public class ReportController {
             String preload = loadConfig(vtnConfig);
             oadr20bVENEiReportService.oadrUpdateReport(
                     vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload, OadrUpdateReportType.class));
-            return ResponseUtils.getResString();
+            String resString = ResponseUtils.getResString();
+            OadrPayload oadrPayload = XmlParserUtil.parseOadrXml(resString, OadrPayload.class);
+            String jsonString = JsonParserUtil.toPrettyJsonString(oadrPayload);
+            log.info("updateReport response:{}", jsonString);
+            multiVtnConfig.putResponseData(vtnSessionConfiguration.getVenId(), "updateReport", jsonString);
+            return resString;
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }
@@ -131,7 +150,12 @@ public class ReportController {
             String preload = loadConfig(vtnConfig);
             oadr20bVENEiReportService.oadrRegisterReport(
                     vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload,OadrRegisterReportType.class));
-            return ResponseUtils.getResString();
+            String resString = ResponseUtils.getResString();
+            OadrPayload oadrPayload = XmlParserUtil.parseOadrXml(resString, OadrPayload.class);
+            String jsonString = JsonParserUtil.toPrettyJsonString(oadrPayload);
+            log.info("registerReport response:{}", jsonString);
+            multiVtnConfig.putResponseData(vtnSessionConfiguration.getVenId(), "registerReport", jsonString);
+            return resString;
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }
@@ -144,7 +168,12 @@ public class ReportController {
         try {
             String preload = loadConfig(vtnConfig);
             oadr20bVENEiReportService.oadrRegisteredReport(vtnSessionConfiguration, XmlParserUtil.parseOadrXml(preload,OadrRegisteredReportType.class));
-            return ResponseUtils.getResString();
+            String resString = ResponseUtils.getResString();
+            OadrPayload oadrPayload = XmlParserUtil.parseOadrXml(resString, OadrPayload.class);
+            String jsonString = JsonParserUtil.toPrettyJsonString(oadrPayload);
+            log.info("registeredReport response:{}", jsonString);
+            multiVtnConfig.putResponseData(vtnSessionConfiguration.getVenId(), "registeredReport", jsonString);
+            return resString;
         }catch (Exception e){
             return "error response:"+ e.getMessage();
         }

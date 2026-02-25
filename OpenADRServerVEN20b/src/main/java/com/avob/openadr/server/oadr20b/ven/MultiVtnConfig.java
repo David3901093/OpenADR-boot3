@@ -1,28 +1,16 @@
 package com.avob.openadr.server.oadr20b.ven;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import com.avob.openadr.client.http.OadrHttpClientBuilder;
 import com.avob.openadr.client.http.oadr20b.OadrHttpClient20b;
 import com.avob.openadr.client.http.oadr20b.ven.OadrHttpVenClient20b;
-import com.avob.openadr.client.xmpp.oadr20b.OadrXmppClient20b;
-import com.avob.openadr.client.xmpp.oadr20b.OadrXmppClient20bBuilder;
-import com.avob.openadr.client.xmpp.oadr20b.OadrXmppException;
 import com.avob.openadr.client.xmpp.oadr20b.ven.OadrXmppVenClient20b;
 import com.avob.openadr.model.oadr20b.Oadr20bFactory;
 import com.avob.openadr.model.oadr20b.Oadr20bSecurity;
@@ -37,7 +25,6 @@ import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureException;
 import com.avob.openadr.model.oadr20b.exception.Oadr20bXMLSignatureValidationException;
 import com.avob.openadr.model.oadr20b.oadr.*;
 import com.avob.openadr.model.oadr20b.xcal.DurationPropType;
-import com.avob.openadr.security.OadrPKISecurity;
 import com.avob.openadr.security.exception.OadrSecurityException;
 import com.avob.openadr.server.oadr20b.ven.exception.Oadr20bInvalidReportRequestException;
 import com.avob.openadr.server.oadr20b.ven.exception.OadrVTNInitializationException;
@@ -47,7 +34,6 @@ import com.avob.openadr.server.oadr20b.ven.xmpp.XmppVenListener;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
-import javax.net.ssl.SSLContext;
 
 import jakarta.xml.bind.JAXBException;
 
@@ -58,6 +44,7 @@ import org.jxmpp.stringprep.XmppStringprepException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import org.springframework.core.env.AbstractEnvironment;
@@ -79,6 +66,10 @@ public class MultiVtnConfig {
 	@Autowired
 	private Environment env;
 
+	@Value("${oadr.security.CN_disabled}")
+	private boolean cnDisabled;
+
+
 	private Map<String, VtnSessionConfiguration> multiConfig = new HashMap<String, VtnSessionConfiguration>();
 
 	private Map<String, OadrHttpVenClient20b> multiHttpClientConfig = new HashMap<String, OadrHttpVenClient20b>();
@@ -86,6 +77,7 @@ public class MultiVtnConfig {
 	private Map<String, OadrXmppVenClient20b> multiXmppClientConfig = new HashMap<String, OadrXmppVenClient20b>();
 
 	private Map<String, Map<String, OadrReportType>> reports = new HashMap<>();
+	private Map<String, Map<String, String>> requestsResponseMap = new HashMap<>();
 
 	private List<String> knownVtnId = new ArrayList<>();
 
@@ -103,10 +95,7 @@ public class MultiVtnConfig {
 		String certificatePathForClient = session.getTempVenCertificatePath() != null ?
 				session.getTempVenCertificatePath() :
 				session.getVenCertificatePath();
-
-		if (session.getVtnXmppHost() != null && session.getVtnXmppPort() != null) {
-			configureXMPPClient(session, privateKeyPathForClient, certificatePathForClient);
-		} else if (session.getVtnUrl() != null) {
+		  if (session.getVtnUrl() != null) {
 			configureHTTPClient(session, privateKeyPathForClient, certificatePathForClient);
 		} else {
 			throw new IllegalStateException(String.format(
@@ -139,55 +128,13 @@ public class MultiVtnConfig {
 		OadrHttpVenClient20b client = null;
 		if (session.getXmlSignature()) {
 			// Use the potentially temporary paths from JKS extraction
-			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build(), privateKeyPath,
+			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build(cnDisabled), privateKeyPath,
 					certificatePath, session.getReplayProtectAcceptedDelaySecond()));
 		} else {
-			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build()));
+			client = new OadrHttpVenClient20b(new OadrHttpClient20b(builder.build(cnDisabled)));
 		}
 
 		putMultiHttpClientConfig(session, client);
-	}
-
-	private void configureXMPPClient(VtnSessionConfiguration session, String privateKeyPath, String certificatePath)
-			throws OadrSecurityException, JAXBException, OadrVTNInitializationException {
-		try {
-
-			LOGGER.info("Init XMPP VEN client");
-			String password = UUID.randomUUID().toString();
-			// Use the potentially temporary paths from JKS extraction
-			SSLContext sslContext = OadrPKISecurity.createSSLContext(privateKeyPath,
-					certificatePath, session.getTrustCertificates(), password);
-
-			OadrXmppClient20bBuilder builder = new OadrXmppClient20bBuilder()
-					.withHostAndPort(session.getVtnXmppHost(), session.getVtnXmppPort()).withVenID(session.getVenId())
-					.withResource("client").withSSLContext(sslContext).withListener(xmppVenListeners);
-
-			if (session.getVtnXmppDomain() != null) {
-				builder.withDomain(session.getVtnXmppDomain());
-			}
-
-			if (session.getVtnXmppUser() != null && session.getVtnXmppPass() != null) {
-				builder.withPassword(session.getVtnXmppPass());
-			}
-
-			OadrXmppClient20b oadrXmppClient20b = builder.build();
-
-			OadrXmppVenClient20b venClient = null;
-			if (session.getXmlSignature()) {
-				// Use the potentially temporary paths from JKS extraction
-				venClient = new OadrXmppVenClient20b(oadrXmppClient20b, privateKeyPath,
-						certificatePath, session.getReplayProtectAcceptedDelaySecond());
-			} else {
-				venClient = new OadrXmppVenClient20b(oadrXmppClient20b);
-			}
-
-			String connectionJid = venClient.getBareConnectionJid();
-			session.setVenUrl(connectionJid);
-			putMultiXmppClientConfig(session, venClient);
-
-		} catch (OadrSecurityException | OadrXmppException e) {
-			throw new OadrVTNInitializationException(e);
-		}
 	}
 
 
@@ -235,11 +182,7 @@ public class MultiVtnConfig {
 				knownVtnId.add(session.getVtnId());
 
 				if (session.getVenRegisterReport() != null) {
-					Map<String, OadrReportType> map = new HashMap<>();
-					session.getVenRegisterReport().values().forEach(report -> {
-						map.put(report.getReportSpecifierID(), report);
-					});
-					reports.put(getSessionKey(session.getVtnId(), session.getVenUrl()), map);
+					reports.put(getSessionKey(session.getVtnId(), session.getVenUrl()), session.getVenRegisterReport());
 				}
 
 			} catch (OadrSecurityException e) {
@@ -290,21 +233,19 @@ public class MultiVtnConfig {
 	public Integer checkReportSpecifier(VtnSessionConfiguration vtnConfig, String requestId, String reportRequestId,
 										ReportSpecifierType reportSpecifier) throws Oadr20bInvalidReportRequestException {
 		int valid=ReportSpecifierStatus.OK;
+		String sessionKey = getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl());
 		// check report specifier
 		String reportSpecifierID = reportSpecifier.getReportSpecifierID();
 		// if report specifier is not known or reportSpecifierID is not included in VTN session configuration
-		if (reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())) == null || !reports
-				.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).containsKey(reportSpecifierID)) {
+		if (reports.get(sessionKey) == null || !reports
+				.get(sessionKey).containsKey(reportSpecifierID)) {
 			LOGGER.error("Report specifier " + reportSpecifierID + " is not known");
 			return ReportSpecifierStatus.INVALID_REPORT_SPECIFIER_ID;
 		}
 		// check report description
 		OadrReportType report = reports.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl()))
 				.get(reportSpecifierID);
-		Map<String, OadrReportDescriptionType> reportDescriptions = report.getOadrReportDescription().stream()
-				.collect(Collectors.toMap(desc -> {
-					return getReportDescriptionUID(desc);
-				}, Function.identity()));
+		List<OadrReportDescriptionType> reportDescriptions = report.getOadrReportDescription();
 
 		DurationPropType granularity = reportSpecifier.getGranularity();
 		DurationPropType reportBackDuration = reportSpecifier.getReportBackDuration();
@@ -317,18 +258,19 @@ public class MultiVtnConfig {
 			valid =ReportSpecifierStatus.INVALID_REPORT_BACK_DURATION;
 		}
 
-		List<SpecifierPayloadType> specifierPayload = reportSpecifier.getSpecifierPayload();
+		List<String> specifierPayloadIds = reportSpecifier.getSpecifierPayload().stream().map(this :: getReportDescriptionUID).toList();
 
-		for (SpecifierPayloadType specifier : specifierPayload) {
-			String reportDescriptionUID = getReportDescriptionUID(specifier);
+
+
+		for (String reportDescriptionUID : specifierPayloadIds) {
 			// check report descriptionID
-			if (!reportDescriptions.containsKey(reportDescriptionUID)) {
+			if (! checkSpecifierDescriptionID(reportDescriptions,reportDescriptionUID)) {
 				LOGGER.error("Report description " + reportDescriptionUID + " is not known");
 				valid = ReportSpecifierStatus.INVALID_REPORT_DESCRIPTION_ID;
 				break;
 			}
 
-			OadrReportDescriptionType oadrReportDescriptionType = reportDescriptions.get(reportDescriptionUID);
+			OadrReportDescriptionType oadrReportDescriptionType = getReportByDescriptionUID(reportDescriptions,reportDescriptionUID);
 			OadrSamplingRateType oadrSamplingRate = oadrReportDescriptionType.getOadrSamplingRate();
 
 			Long minSamplingRateMillis = null;
@@ -363,6 +305,50 @@ public class MultiVtnConfig {
 		}
 
 		return valid;
+	}
+
+	private OadrReportDescriptionType getReportByDescriptionUID(List<OadrReportDescriptionType> reportDescriptions, String reportDescriptionUID) {
+		for (OadrReportDescriptionType reportDescription : reportDescriptions) {
+			if (getReportDescriptionUID(reportDescription).equals(reportDescriptionUID)){
+				return reportDescription;
+			} else if (reportDescriptionUID.contains("x-notApplicable")) {
+				Optional<OadrReportDescriptionType> directReadDesc = reportDescriptions.stream()
+						.filter(desc ->
+								reportDescriptionUID.contains(desc.getRID()) &&
+										"Direct Read".equals(desc.getReadingType()) &&
+										"usage".equals(desc.getReportType())
+						)
+						.findFirst();
+
+				if (directReadDesc.isPresent()) {
+					return directReadDesc.get();
+				}
+			}
+		}
+		return null;
+
+
+	}
+
+	private boolean checkSpecifierDescriptionID(List<OadrReportDescriptionType> reportDescriptions, String reportDescriptionUID) {
+		for (OadrReportDescriptionType reportDescription : reportDescriptions) {
+			if (getReportDescriptionUID(reportDescription).equals(reportDescriptionUID)){
+				return true;
+			} else if (reportDescriptionUID.contains("x-notApplicable")) {
+				Optional<OadrReportDescriptionType> directReadDesc = reportDescriptions.stream()
+						.filter(desc ->
+								reportDescriptionUID.contains(desc.getRID()) &&
+										"Direct Read".equals(desc.getReadingType()) &&
+										"usage".equals(desc.getReportType())
+						)
+						.findFirst();
+
+				if (directReadDesc.isPresent()) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private String getReportDescriptionUID(SpecifierPayloadType description) {
@@ -521,6 +507,9 @@ public class MultiVtnConfig {
 	}
 
 	public VtnSessionConfiguration getMultiConfig(String vtnId, String venPushUrl) {
+		if (cnDisabled){
+			return multiConfig.values().stream().findFirst().orElse(null);
+		}
 		return multiConfig.get(getSessionKey(vtnId, venPushUrl));
 	}
 
@@ -552,5 +541,27 @@ public class MultiVtnConfig {
 		} else if (vtnConfig.getVtnXmppHost() != null && vtnConfig.getVtnXmppPort() != null) {
 			multiXmppClientConfig.get(getSessionKey(vtnConfig.getVtnId(), vtnConfig.getVenUrl())).oadrResponse(response);
 		}
+	}
+
+	public void putResponseData (String venId, String action, String response){
+		Map<String, String> stringStringMap = requestsResponseMap.get(venId);
+		if (stringStringMap == null){
+			stringStringMap = new HashMap<>();
+			stringStringMap.put(action, response);
+			requestsResponseMap.put(venId, stringStringMap);
+		}else {
+			stringStringMap.put(action, response);
+		}
+	}
+	public String getResponseData (String venId, String action){
+		Map<String, String> stringStringMap = requestsResponseMap.get(venId);
+		if (stringStringMap == null){
+			return null;
+		}
+		return stringStringMap.get(action);
+	}
+
+	public void setReports(String vtnId, String venUrl, Map<String, OadrReportType> map) {
+		reports.put(getSessionKey(vtnId, venUrl), map);
 	}
 }

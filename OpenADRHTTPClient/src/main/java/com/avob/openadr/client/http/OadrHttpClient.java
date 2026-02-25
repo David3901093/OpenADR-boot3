@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIBuilder;
@@ -53,5 +54,11 @@ public class OadrHttpClient {
 
         return client.execute(request, context);
 
+    }
+
+    public HttpResponse execute(HttpGet request, String path) throws URISyntaxException, IOException {
+        URI uri = new URIBuilder(path).build();
+        request.setURI(uri);
+        return client.execute(request, defaultLocalContext);
     }
 }

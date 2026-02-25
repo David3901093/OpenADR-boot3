@@ -9,10 +9,7 @@ COPY --from=openadr-boot3-build:latest /opt/oadr/cert /opt/oadr-ven20b/cert
 COPY --from=openadr-boot3-build:latest /opt/oadr/dummy-ven20b/*.jar /opt/oadr-ven20b/
 RUN sed -i 's/\r$//' /opt/oadr-ven20b/wait-for-it.sh
 
-COPY realEnergy.registerReport.xml /opt/oadr-ven20b/realEnergy.registerReport.xml
-COPY smartEnergyModule.registerReport.xml /opt/oadr-ven20b/smartEnergyModule.registerReport.xml
-COPY thermostat.registerReport.xml /opt/oadr-ven20b/thermostat.registerReport.xml
-COPY thermostat.full.registerReport.xml /opt/oadr-ven20b/thermostat.full.registerReport.xml
+COPY xml /opt/oadr-ven20b/xml
 COPY test_certs /opt/oadr-ven20b/test_certs
 COPY application.properties /opt/oadr-ven20b/application.properties
 

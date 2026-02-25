@@ -95,8 +95,14 @@ public class OadrHttpClientBuilder {
 		create = HttpClientBuilder.create();
 	}
 
+
 	public OadrHttpClientBuilder withTrustedCertificate(List<String> trustedCertificateFilePath) {
 		this.trustedCertificateFilePath = trustedCertificateFilePath;
+		return this;
+	}
+
+	public OadrHttpClientBuilder withDefaultUri(URI defaultUri) {
+		this.defaultUri = defaultUri;
 		return this;
 	}
 
@@ -222,16 +228,22 @@ public class OadrHttpClientBuilder {
 		return this;
 	}
 
-	public OadrHttpClient build() throws OadrSecurityException {
+	public OadrHttpClient build(boolean enabledCNDisabled) throws OadrSecurityException {
 
 		String password = UUID.randomUUID().toString();
 		SSLContext sc = OadrPKISecurity.createSSLContext(clientPrivateKeyPemFilePath, clientCertificatePemFilePath,
 				this.trustedCertificateFilePath, password);
-		//SSLConnectionSocketFactory createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
-		//		SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		// For testing purpose we should forbid hostname verification
-		SSLConnectionSocketFactory createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
-				NoopHostnameVerifier.INSTANCE);
+		SSLConnectionSocketFactory createSSLSocketFactory=null;
+		if (!enabledCNDisabled) {
+			 createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
+					SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+		}else{
+			// For testing purpose we should forbid hostname verification
+			createSSLSocketFactory = new SSLConnectionSocketFactory(sc, protocols, ciphers,
+					NoopHostnameVerifier.INSTANCE);
+		}
+
+
 
 		RegistryBuilder<ConnectionSocketFactory> register = RegistryBuilder.<ConnectionSocketFactory>create()
 				.register("https", createSSLSocketFactory);

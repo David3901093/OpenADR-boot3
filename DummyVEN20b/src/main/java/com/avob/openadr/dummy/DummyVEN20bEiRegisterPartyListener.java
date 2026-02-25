@@ -1,15 +1,22 @@
 package com.avob.openadr.dummy;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import com.avob.openadr.dummy.utils.HttpClientUtils;
+import com.avob.openadr.model.oadr20b.oadr.*;
+import com.avob.openadr.security.exception.OadrSecurityException;
 import com.avob.openadr.server.oadr20b.ven.service.Oadr20bVENEiEventService;
+import com.avob.openadr.server.oadr20b.ven.util.JsonParserUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import  jakarta.annotation.PostConstruct;
 import  jakarta.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
@@ -17,9 +24,6 @@ import org.springframework.context.event.EventListener;
 import com.avob.openadr.model.oadr20b.builders.Oadr20bEiOptBuilders;
 import com.avob.openadr.model.oadr20b.ei.OptReasonEnumeratedType;
 import com.avob.openadr.model.oadr20b.ei.OptTypeType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreateOptType;
-import com.avob.openadr.model.oadr20b.oadr.OadrCreatedPartyRegistrationType;
-import com.avob.openadr.model.oadr20b.oadr.OadrRequestEventType;
 import com.avob.openadr.server.oadr20b.ven.MultiVtnConfig;
 import com.avob.openadr.server.oadr20b.ven.VtnSessionConfiguration;
 import com.avob.openadr.server.oadr20b.ven.service.Oadr20bVENEiOptService;
@@ -47,6 +51,9 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	@Resource
 	private Oadr20bVENEiEventService oadr20bVENEiEventService;
 
+	@Value("${oadr.vtn.ven3_httppush.venReportDataSource}")
+	private String venReportDataSourceUrl;
+
 
 
 	@PostConstruct
@@ -55,10 +62,41 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 	}
 
 	@EventListener({ ApplicationReadyEvent.class })
-	void applicationReadyEvent() {
+	void applicationReadyEvent()  {
+
+
 		for (VtnSessionConfiguration vtnSessionConfiguration : multiVtnConfig.getMultiConfig().values()) {
-			if (oadr20bVENEiRegisterPartyService != null) {
-				oadr20bVENEiRegisterPartyService.initRegistration(vtnSessionConfiguration);
+            OadrRegisterReportType oadrRegisterReportType = null;
+			try {
+				oadrRegisterReportType = initReportDataSource(vtnSessionConfiguration, this.venReportDataSourceUrl);
+				
+				Map<String, OadrReportType> mergedReportMap = new HashMap<>();
+
+				for (OadrReportType report : oadrRegisterReportType.getOadrReport()) {
+					String specId = report.getReportSpecifierID();
+					if (mergedReportMap.containsKey(specId)) {
+						// merge the reportDescription with the same reportSpecifierID but different reportDescription
+						mergedReportMap.get(specId).getOadrReportDescription().addAll(report.getOadrReportDescription());
+					} else {
+						// add the report
+						mergedReportMap.put(specId, report);
+					}
+				}
+
+
+				vtnSessionConfiguration.setVenRegisterReport(mergedReportMap);
+
+				if (vtnSessionConfiguration.getVenRegisterReport() != null) {
+					// set reports directly in multiVtnConfig
+					multiVtnConfig.setReports(
+							vtnSessionConfiguration.getVtnId(),
+							vtnSessionConfiguration.getVenUrl(),
+							vtnSessionConfiguration.getVenRegisterReport()
+					);
+				}
+			}
+			catch (Exception e) {
+				LOGGER.error("Can't register report", e);
 			}
 		}
 	}
@@ -104,5 +142,32 @@ public class DummyVEN20bEiRegisterPartyListener implements Oadr20bVENEiRegisterP
 
 		oadr20bVENEiOptService.createOpt(vtnConfiguration, oadrCreateOptType);
 	}
+
+	/**
+	 * Init report data source
+	 *
+	 * @param vtnSessionConfiguration the vtn session configuration
+	 * @param dataUrl                 the  url to get data
+	 * @return the report data source
+	 * @throws OadrSecurityException
+	 */
+	private OadrRegisterReportType initReportDataSource(VtnSessionConfiguration vtnSessionConfiguration,String dataUrl)  {
+		OadrRegisterReportType oadrRegisterReportType = null;
+		try{
+			// init dataResourceUrl
+			HttpClientUtils.loadUrl(dataUrl);
+			String responseBody = HttpClientUtils.sendRequest(dataUrl, vtnSessionConfiguration, "registerReport");
+
+			oadrRegisterReportType = JsonParserUtil.parseJaxbJson(responseBody, OadrRegisterReportType.class);
+			LOGGER.info( "Register report data source:" + JsonParserUtil.toPrettyJsonString(oadrRegisterReportType) );
+		}catch (IllegalStateException | JsonProcessingException ex){
+			LOGGER.error("Can't register report data source", ex);
+		}
+		return oadrRegisterReportType;
+	}
+
+
+
+
 
 }

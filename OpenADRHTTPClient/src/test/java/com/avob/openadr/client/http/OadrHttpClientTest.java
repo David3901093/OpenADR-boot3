@@ -42,7 +42,7 @@ public class OadrHttpClientTest {
 
 		new OadrHttpClientBuilder().withPooling(1, 1).withProtocol(protocols, ciphers)
 				.withDefaultBasicAuthentication("http://localhost:8080", "", "")
-				.withTrustedCertificate(Arrays.asList(certs)).withTimeout(TIMEOUT).build();
+				.withTrustedCertificate(Arrays.asList(certs)).withTimeout(TIMEOUT).build(true);
 
 	}
 
@@ -54,7 +54,7 @@ public class OadrHttpClientTest {
 		new OadrHttpClientBuilder().withPooling(1, 1).withProtocol(protocols, ciphers)
 				.withDefaultDigestAuthentication("http://localhost:8080", "", "", "", "")
 				.withTrustedCertificate(Arrays.asList(certs)).withHeader("Content-Type", "application/json")
-				.enableHttp(false).withTimeout(TIMEOUT).build();
+				.enableHttp(false).withTimeout(TIMEOUT).build(true);
 
 	}
 
@@ -65,7 +65,7 @@ public class OadrHttpClientTest {
 
 		new OadrHttpClientBuilder().withProtocol(protocols, ciphers)
 				.withX509Authentication(rsaPrivateKeyPemFilePath, rsaClientCertPemFilePath)
-				.withTrustedCertificate(Arrays.asList(certs)).enableHttp(true).withTimeout(TIMEOUT).build();
+				.withTrustedCertificate(Arrays.asList(certs)).enableHttp(true).withTimeout(TIMEOUT).build(true);
 
 	}
 
@@ -86,7 +86,7 @@ public class OadrHttpClientTest {
 
 		new OadrHttpClientBuilder().withPooling(1, 1).withProtocol(protocols, ciphers)
 				.withX509Authentication(eccPrivateKeyPemFilePath, eccClientCertPemFilePath)
-				.withTrustedCertificate(Arrays.asList(certs)).withTimeout(TIMEOUT).build();
+				.withTrustedCertificate(Arrays.asList(certs)).withTimeout(TIMEOUT).build(true);
 
 	}
 
@@ -99,7 +99,7 @@ public class OadrHttpClientTest {
 		try {
 			new OadrHttpClientBuilder().withPooling(1, 1).withProtocol(protocols, ciphers)
 					.withX509Authentication("", "").withTrustedCertificate(Arrays.asList(certs)).withTimeout(TIMEOUT)
-					.build();
+					.build(true);
 		} catch (OadrSecurityException e) {
 			exception = true;
 		}

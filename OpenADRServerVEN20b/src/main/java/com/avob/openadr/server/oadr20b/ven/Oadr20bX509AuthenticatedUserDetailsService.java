@@ -8,6 +8,7 @@ import  jakarta.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.avob.openadr.security.OadrFingerprintSecurity;
 import com.avob.openadr.security.exception.OadrSecurityException;
-import org.springframework.util.StringUtils;
+
 
 /**
  * x509 oadr fingerprint mechanism demonstration
@@ -31,6 +32,10 @@ public class Oadr20bX509AuthenticatedUserDetailsService
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Oadr20bX509AuthenticatedUserDetailsService.class);
 
+	@Value("${oadr.security.CN_disabled}")
+	private boolean cnDisabled;
+
+
 	private static final List<SimpleGrantedAuthority> VTN_AUTHORITY = Arrays
 			.asList(new SimpleGrantedAuthority("ROLE_VTN"));
 	private static final List<String> WHITE_LIST = Arrays
@@ -44,9 +49,11 @@ public class Oadr20bX509AuthenticatedUserDetailsService
 		String fingerprint = "";
 		try {
 			fingerprint = OadrFingerprintSecurity.getOadr20bFingerprint(certificate);
-			//if (WHITE_LIST.contains(fingerprint)) {
-			//	return new User(fingerprint, "",VTN_AUTHORITY );
-			//}
+			if (cnDisabled) {
+				if (WHITE_LIST.contains(fingerprint)) {
+					return new User(fingerprint, "", VTN_AUTHORITY);
+				}
+			}
 			if (!fingerprint.trim().isEmpty()) {
 				return new User(fingerprint, "",VTN_AUTHORITY );
 			}
@@ -66,20 +73,24 @@ public class Oadr20bX509AuthenticatedUserDetailsService
 
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		//if (WHITE_LIST.contains(username)) {
-		//	username =multiConfig.getVtnId();
-		//	if (username!=null){
-		//		return new User(username, "", VTN_AUTHORITY);
-		//	}
-		//
-		//}
-		if (!WHITE_LIST.contains(username)) {
-			username =multiConfig.getVtnId();
-			if (username!=null){
-				return new User(username, "", VTN_AUTHORITY);
-			}
+		if (!cnDisabled){
+			if (WHITE_LIST.contains(username)) {
+				username =multiConfig.getVtnId();
+				if (username!=null){
+					return new User(username, "", VTN_AUTHORITY);
+				}
 
+			}
+		}else{
+			if (!WHITE_LIST.contains(username)) {
+				username =multiConfig.getVtnId();
+				if (username!=null){
+					return new User(username, "", VTN_AUTHORITY);
+				}
+
+			}
 		}
+
 		if (multiConfig.isKnownVtnId(username)) {
 			return new User(username, "", VTN_AUTHORITY);
 		}

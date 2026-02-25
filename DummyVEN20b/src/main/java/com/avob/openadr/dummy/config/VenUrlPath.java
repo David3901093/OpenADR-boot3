@@ -11,4 +11,5 @@ public class VenUrlPath {
     public static final String REPORT = "report";
     public static final String EVENT = "event";
     public static final String OPT = "opt";
+    public static final String DATA = "data";
 }

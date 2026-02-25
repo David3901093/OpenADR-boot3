@@ -16,6 +16,4 @@ public class OadrSecurityException extends Exception {
 	public OadrSecurityException(Exception e) {
 		super(e);
 	}
-
-
 }
