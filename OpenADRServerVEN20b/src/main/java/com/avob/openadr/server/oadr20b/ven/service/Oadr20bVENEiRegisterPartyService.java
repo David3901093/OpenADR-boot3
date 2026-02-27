@@ -220,21 +220,6 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 		String requestId = java.util.UUID.randomUUID().toString();
 		OadrCreatePartyRegistrationType createPartyRegistration=null;
 		try {
-			if (vtnConfiguration.getVenRegistrationId()!= null){
-				createPartyRegistration = Oadr20bEiRegisterPartyBuilders
-						.newOadr20bCreatePartyRegistrationBuilder(requestId,
-								vtnConfiguration.getVenId(),
-								SchemaVersionEnumeratedType.OADR_20B.value())
-						.withOadrTransportName(OadrTransportType.SIMPLE_HTTP)
-						.withOadrTransportAddress(vtnConfiguration.getVenUrl())
-						.withOadrReportOnly(vtnConfiguration.getReportOnly())
-						.withOadrVenName(vtnConfiguration.getVenName())
-						.withOadrXmlSignature(vtnConfiguration.getXmlSignature())
-						.withRegistrationId(vtnConfiguration.getVenRegistrationId())
-						.withOadrHttpPullModel(vtnConfiguration.getPullModel())
-						.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
-						.build();
-			}else {
 				 createPartyRegistration = Oadr20bEiRegisterPartyBuilders
 						.newOadr20bCreatePartyRegistrationBuilder(requestId,
 								vtnConfiguration.getVenId(),
@@ -247,7 +232,6 @@ public class Oadr20bVENEiRegisterPartyService implements Oadr20bVENEiService {
 						.withOadrHttpPullModel(vtnConfiguration.getPullModel())
 						.withSchemaVersion(SchemaVersionEnumeratedType.OADR_20B.value())
 						.build();
-			}
 
 			if (vtnConfiguration.getVtnUrl() != null) {
 				OadrCreatedPartyRegistrationType oadrCreatedPartyRegistrationType = multiVtnConfig.getMultiHttpClientConfig(vtnConfiguration)

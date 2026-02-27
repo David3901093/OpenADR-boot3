@@ -173,10 +173,10 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 		int responseCode = HttpStatus.OK_200;
 
 		if (!(vtnConfiguration.getVtnId().equals(event.getVtnID()))) {
-			return getErrorResponseType(vtnConfiguration, responseCode, new ArrayList<EventResponse>(), vtnRequestID);
+			return getErrorResponseType(vtnConfiguration, Oadr20bApplicationLayerErrorCode.INVALID_ID_452, new ArrayList<EventResponse>(), vtnRequestID);
 		}
 		if (event.getOadrEvent().isEmpty()){
-			return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId()).build();
+			return null;
 		}
 
 		Set<String> validSignalNames = new HashSet<>();
@@ -217,10 +217,25 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 					eventResponseCode = Oadr20bApplicationLayerErrorCode.SIGNAL_NOT_SUPPORTED_460;
 
 				}
+
 				boolean currentIsOut = !signalSupported || isOut;
 
 				Optional<EventResponse> processOadrEvent = processOadrEvent(vtnConfiguration, vtnRequestID,eventResponseCode, next,currentIsOut);
-				processOadrEvent.ifPresent(eventResponses::add);
+				if (processOadrEvent.isPresent()) {
+					eventResponses.add(processOadrEvent.get());
+				} else {
+					EventResponse manualResponse = new EventResponse();
+					manualResponse.setResponseCode(String.valueOf(eventResponseCode));
+					manualResponse.setQualifiedEventID(new QualifiedEventIDType());
+					manualResponse.getQualifiedEventID().setEventID(next.getEiEvent().getEventDescriptor().getEventID());
+					manualResponse.getQualifiedEventID().setModificationNumber(next.getEiEvent().getEventDescriptor().getModificationNumber());
+					if (currentIsOut) {
+						manualResponse.setOptType(OptTypeType.OPT_OUT);
+					} else {
+						manualResponse.setOptType(OptTypeType.OPT_IN);
+					}
+					eventResponses.add(manualResponse);
+				}
 			}
 
 			if (!eventResponses.isEmpty()) {
@@ -236,9 +251,6 @@ public class Oadr20bVENEiEventService implements Oadr20bVENEiService {
 					LOGGER.error("Error sending oadrCreatedEvent", e);
 
 				}
-
-				return Oadr20bResponseBuilders.newOadr20bResponseBuilder(vtnRequestID, HttpStatus.OK_200, vtnConfiguration.getVenId())
-						.build();
 			}
 
 		} catch (Oadr20bDistributeEventApplicationLayerException e) {
