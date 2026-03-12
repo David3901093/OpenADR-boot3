@@ -12,7 +12,7 @@
     <ei:optType>optOut</ei:optType>
     <ei:optReason>participating</ei:optReason>
     <emix:marketContext>http://MarketContext1</emix:marketContext>
-    <ei:venID>f3427ed82251c2bb5e54</ei:venID>
+    <ei:venID>CoolDesign-RAsystem-VEN0001</ei:venID>
     <xcal:vavailability>
         <xcal:components>
             <xcal:available>
@@ -30,7 +30,7 @@
     <ei:createdDateTime>2025-09-26T06:51:27.346Z</ei:createdDateTime>
     <pyld:requestID>0</pyld:requestID>
     <ei:eiTarget>
-        <ei:venID>f3427ed82251c2bb5e54</ei:venID>
+        <ei:venID>CoolDesign-RAsystem-VEN0001</ei:venID>
     </ei:eiTarget>
     <oadr:oadrDeviceClass>
         <power:endDeviceAsset>

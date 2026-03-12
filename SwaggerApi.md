@@ -467,7 +467,7 @@ response (Code 200)
 ```json
 [
   {
-    "username": "f3427ed82251c2bb5e54",
+    "username": "CoolDesign-RAsystem-VEN0001",
     "password": null,
     "authenticationType": "ROLE_VEN",
     "needCertificateGeneration": null,
@@ -479,7 +479,7 @@ response (Code 200)
     "pushUrl": "https://ven3.oadr.com:8083",
     "httpPullModel": false,
     "lastUpdateDatetime": null,
-    "registrationId": "f3427ed82251c2bb5e542123b3a9-f44c-4370-a4cf-c002be02fdd7",
+    "registrationId": "CoolDesign-RAsystem-VEN00012123b3a9-f44c-4370-a4cf-c002be02fdd7",
     "reportOnly": false,
     "xmlSignature": false
   },
@@ -834,7 +834,7 @@ response body(Code 200)
 
 ```json
 {
-  "username": "f3427ed82251c2bb5e54",
+  "username": "CoolDesign-RAsystem-VEN0001",
   "password": null,
   "authenticationType": "ROLE_VEN",
   "needCertificateGeneration": null,
@@ -1108,7 +1108,7 @@ params
 
 | Name  |        value         |
 | :---: | :------------------: |
-| venID | f3427ed82251c2bb5e54 |
+| venID | CoolDesign-RAsystem-VEN0001 |
 
 response body
 
@@ -2232,7 +2232,7 @@ params
 
 | Name |        value         |
 | :--: | :------------------: |
-|  id  | f3427ed82251c2bb5e54 |
+|  id  | CoolDesign-RAsystem-VEN0001 |
 
 response body
 
@@ -2262,7 +2262,7 @@ params
 
 |      Name       |        value         |
 | :-------------: | :------------------: |
-|      VenId      | f3427ed82251c2bb5e54 |
+|      VenId      | CoolDesign-RAsystem-VEN0001 |
 | reportRequestId |          0           |
 
 response body
@@ -2307,7 +2307,7 @@ params
 
 |      Name       |        value         |
 | :-------------: | :------------------: |
-|      VenId      | f3427ed82251c2bb5e54 |
+|      VenId      | CoolDesign-RAsystem-VEN0001 |
 | reportRequestId |          1           |
 
 response body
@@ -2344,7 +2344,7 @@ params
 
 | Name  |        value         |
 | :---: | :------------------: |
-| VenId | f3427ed82251c2bb5e54 |
+| VenId | CoolDesign-RAsystem-VEN0001 |
 
 request body
 
@@ -2657,7 +2657,7 @@ params
 
 | Name  |        value         |
 | :---: | :------------------: |
-| VenId | f3427ed82251c2bb5e54 |
+| VenId | CoolDesign-RAsystem-VEN0001 |
 
 request body
 
@@ -2792,7 +2792,7 @@ params
 
 |       Name        |        value         |
 | :---------------: | :------------------: |
-|       VenId       | f3427ed82251c2bb5e54 |
+|       VenId       | CoolDesign-RAsystem-VEN0001 |
 | reportSpecifierId |          0           |
 |  reportRequestId  |          0           |
 
@@ -2808,7 +2808,7 @@ params
 
 |       Name        |        value         |
 | :---------------: | :------------------: |
-|       VenId       | f3427ed82251c2bb5e54 |
+|       VenId       | CoolDesign-RAsystem-VEN0001 |
 | reportSpecifierId |          1           |
 |  reportRequestId  |          0           |
 
@@ -2826,8 +2826,8 @@ response body(code 200)
     "end": 0,
     "acked": true,
     "createdDatetime": 1753929857,
-    "venId": "f3427ed82251c2bb5e54",
-    "requestorUsername": "f3427ed82251c2bb5e54"
+    "venId": "CoolDesign-RAsystem-VEN0001",
+    "requestorUsername": "CoolDesign-RAsystem-VEN0001"
   }
 ]
 ```
@@ -2838,7 +2838,7 @@ params
 
 |     Name      |        value         |
 | :-----------: | :------------------: |
-|     VenId     | f3427ed82251c2bb5e54 |
+|     VenId     | CoolDesign-RAsystem-VEN0001 |
 |     start     |                      |
 |      end      |                      |
 | marketContext |                      |
@@ -2849,7 +2849,7 @@ response body(code 200)
 [
   {
     "id": 1,
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "marketContext": null,
     "resourceId": null,
     "eventId": null,
@@ -2867,7 +2867,7 @@ params
 
 |     Name     |        value         |
 | :----------: | :------------------: |
-|    VenID     | f3427ed82251c2bb5e54 |
+|    VenID     | CoolDesign-RAsystem-VEN0001 |
 | resourceName |         ven          |
 
 response body(code 406)
@@ -2877,7 +2877,7 @@ response body(code 406)
   "timestamp": 1753943427188,
   "status": 406,
   "error": "Not Acceptable",
-  "path": "/testvtn/Ven/f3427ed82251c2bb5e54/opt/resource/ven"
+  "path": "/testvtn/Ven/CoolDesign-RAsystem-VEN0001/opt/resource/ven"
 }
 ```
 
@@ -2889,7 +2889,7 @@ params
 
 |   Name   |        value         |
 | :------: | :------------------: |
-| username | f3427ed82251c2bb5e54 |
+| username | CoolDesign-RAsystem-VEN0001 |
 
 response body(code 200)
 
@@ -3162,7 +3162,7 @@ params
 
 |       Name        |         value          |
 | :---------------: | :--------------------: |
-|       VenID       |  f3427ed82251c2bb5e54  |
+|       VenID       |  CoolDesign-RAsystem-VEN0001  |
 | reportSpecifierId | 0013A20040980FAE_USAGE |
 
 response body(Code 200)
@@ -3178,7 +3178,7 @@ response body(Code 200)
     "start": null,
     "duration": null,
     "createdDatetime": 1577836800000,
-    "venId": "f3427ed82251c2bb5e54"
+    "venId": "CoolDesign-RAsystem-VEN0001"
   }
 ][]
 ```
@@ -3209,7 +3209,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3230,7 +3230,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3251,7 +3251,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3272,7 +3272,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3293,7 +3293,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3314,7 +3314,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3335,7 +3335,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3356,7 +3356,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3377,7 +3377,7 @@ response body
     },
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_USAGE"
   },
   {
@@ -3393,7 +3393,7 @@ response body
     "itemBase": null,
     "eiDatasource": [],
     "eiSubject": [],
-    "venId": "f3427ed82251c2bb5e54",
+    "venId": "CoolDesign-RAsystem-VEN0001",
     "reportSpecifierId": "0013A20040980FAE_STATUS"
   }
 ]

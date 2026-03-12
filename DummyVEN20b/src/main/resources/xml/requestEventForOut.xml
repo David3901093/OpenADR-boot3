@@ -12,7 +12,7 @@
 
     <pyld:eiRequestEvent>
         <pyld:requestID>1234567890</pyld:requestID>
-        <ei:venID>f3427ed82251c2bb5e54</ei:venID>
+        <ei:venID>CoolDesign-RAsystem-VEN0001</ei:venID>
         <pyld:replyLimit>1</pyld:replyLimit>
     </pyld:eiRequestEvent>
 
